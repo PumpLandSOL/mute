@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>body{width:1280px;height:720px}.c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.k{font-family:Michroma;font-size:15px;letter-spacing:.4em;color:#a9bcae}
+#eq{position:absolute;left:190px;right:190px;bottom:150px;height:330px;display:grid;grid-template-columns:repeat(4,1fr);gap:46px;align-items:end}
+.col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bars{display:flex;flex-direction:column-reverse;gap:6px;width:100%}
+.bars i{height:16px;background:linear-gradient(100deg,#00c805,#7dff8a);border-radius:2px;opacity:0}
+.mult{font-family:Michroma;font-size:44px;margin-bottom:14px}.lab{position:absolute;bottom:-46px;font-size:17px;color:#a9bcae;letter-spacing:.08em;white-space:nowrap}
+.col{position:relative}
+#mark{width:96px;height:96px}
+</style><body><div class="amb" id="amb"></div><div class="scan"></div>
+<div class="c" id="s1"><div><div class="k" id="k1">UPDATE 01</div><svg id="mark" viewBox="0 0 40 40" style="margin:26px auto 22px;display:block"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs><path d="M6 15h7l8-7v24l-8-7H6z" fill="#ecf6ee"/><g id="waves" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linecap="round"><path id="w1" d="M26 15q3 5 0 10"/><path id="w2" d="M30 12q5 8 0 16"/><path id="w3" d="M34 9q7 11 0 22"/></g></svg><div class="mi iri" style="font-size:74px" id="t1">The Amplifier</div></div></div>
+<div class="c" id="s2"><div class="mi" style="font-size:40px;line-height:1.45">Silent Yield pays<br><span class="iri">40% of every fee</span><br>to muted holders.</div></div>
+<div id="s3" class="abs" style="inset:0"><div class="abs mi" style="left:0;right:0;top:70px;text-align:center;font-size:34px" id="t3">Hold $MUTE. <span class="iri">Turn it up.</span></div><div id="eq"></div></div>
+<div class="c" id="s4"><div class="mi" style="font-size:62px;line-height:1.25">Up to <span class="iri">3x</span><br>the yield.</div></div>
+<div class="c" id="s5"><div><div class="mi" style="font-size:46px">Muted dollars. <span class="iri">Amplified.</span></div>
+<div style="margin-top:34px;font-size:19px;letter-spacing:.12em;color:#a9bcae">$MUTE · 0xa8fbb4ccfc12ac54c31d6be405ebd33416e1c270</div>
+<div style="margin-top:14px;font-size:22px;letter-spacing:.24em;color:#ecf6ee">mutemoneyrh.xyz</div></div></div>
+<script>
+const $=(i)=>document.getElementById(i),cl=(x)=>Math.max(0,Math.min(1,x)),e=(x)=>1-Math.pow(1-cl(x),3),win=(t,a,b,f=.3)=>cl((t-a)/f)*cl((b-t)/f);
+const T=[[1,'any muted mUSD',4],[1.5,'1M+ $MUTE',6],[2,'5M+ $MUTE',8],[3,'20M+ $MUTE',12]];
+$('eq').innerHTML=T.map((t,i)=>`<div class="col"><div class="mult" id="m${i}">${t[0]}x</div><div class="bars" id="b${i}">${'<i></i>'.repeat(t[2])}</div><div class="lab">${t[1]}</div></div>`).join('');
+window.__seek=(t)=>{
+  $('amb').style.transform=`rotate(${t*3}deg) scale(${1+t*.02})`;
+  $('s1').style.opacity=win(t,0,2.1);$('t1').style.filter=`blur(${(1-e((t-.5)/.6))*20}px)`;$('k1').style.opacity=e(t/.4);
+  ['w1','w2','w3'].forEach((id,i)=>{$(id).style.opacity=e((t-.7-i*.25)/.3);});
+  $('s2').style.opacity=win(t,2.1,4.3);
+  $('s3').style.opacity=win(t,4.3,8.3);
+  T.forEach((tt,i)=>{const bars=[...$('b'+i).children];const p=e((t-4.7-i*.45)/.9);const lit=Math.round(p*bars.length);
+    bars.forEach((b,j)=>{const flick=(t>6.5)?(Math.sin(t*9+i*1.7+j)*.5+.5)>.25||j<lit-2:1;b.style.opacity=j<lit&&flick?(.55+.45*j/bars.length):.08;});
+    $('m'+i).style.opacity=e((t-4.9-i*.45)/.4);$('m'+i).className='mult'+(i===3?' iri':'');});
+  $('s4').style.opacity=win(t,8.3,10);$('s4').firstElementChild.style.transform=`scale(${.9+e((t-8.3)/1.2)*.12})`;
+  $('s5').style.opacity=e((t-10)/.5);
+};window.__seek(0);
+</script>

@@ -112,6 +112,7 @@ function renderMetrics() {
   if (M.punch) { const Fm = M.punch;
     $('punchboard').innerHTML = Fm.board.map((b, i) => `<div class="r"><span class="ty">#${i + 1}</span><span class="sg">${b.who}</span><span class="am">${b.guests} referred · ${fmt(b.earned, 2)} mUSD</span></div>`).join('') || '<div class="r"><span class="sg">no relays yet. send the first drop</span></div>';
   }
+  if (M.quiet && M.quiet.tiers) { const me = A && A.amp; const rows = [[0, 1]].concat(M.quiet.tiers); $('amp-tiers').innerHTML = rows.map((t) => '<div class="' + (me && me.mult === t[1] ? 'on' : '') + '"><div class="x">' + t[1] + 'x</div><div class="h">' + (t[0] ? (t[0] / 1e6) + 'M+ $MUTE' : 'any muted mUSD') + '</div></div>').join(''); }
   if (M.quiet) { const Q = M.quiet;
     $('q-cut').textContent = fmt(Q.cut * 100, 0) + '%'; $('q-paid').textContent = fmt(Q.paid, 2) + ' mUSD'; $('q-24h').textContent = fmt(Q.paid24h, 2) + ' mUSD'; $('q-apr').textContent = Q.muted > 0 && Q.paid24h > 0 ? fmt(Q.apr * 100, 1) + '%' : '—'; $('q-n').textContent = fmt(Q.payouts, 0); $('q-holders').textContent = fmt(Q.holders, 0);
   }
@@ -130,7 +131,8 @@ function renderMetrics() {
 
 // ---------- account ----------
 async function loadAccount() { if (!wallet) { A = null; renderAccount(); return; } A = await api('/api/account', { wallet, ref: refParam || undefined }); if (A.error) { toast(A.error, true); A = null; } renderAccount(); }
-function renderAccount() {
+function renderAmp() { const me = A && A.amp; $('amp-v').textContent = me ? me.mult + 'x' : '—'; $('amp-me').textContent = !A ? 'connect to see' : me.mult + 'x · ' + big(me.held) + ' $MUTE held' + (me.next ? ' · ' + big(me.next.need) + ' more for ' + me.next.mult + 'x' : ' · max tier'); }
+function renderAccount() { renderAmp();
   if (wallet) { $('punchbox').style.display = 'flex'; $('punchlink').textContent = location.origin + '/?ref=' + wallet; } else $('punchbox').style.display = 'none';
   $('f-guests').textContent = A ? fmt(A.guests, 0) : '—'; $('f-earned').textContent = A ? fmt(A.earned, 2) + ' mUSD' : '—';
   $('q-me').textContent = A ? '+' + fmt(A.quietEarned || 0, 4) + ' mUSD' : '—'; $('q-me2').textContent = A ? '+' + fmt(A.quietEarned || 0, 4) + ' mUSD' : '—';

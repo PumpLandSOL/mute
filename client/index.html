@@ -188,6 +188,8 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
 .heroG .orb{width:210px}.heroG{grid-template-columns:minmax(0,1fr) 210px}
 .note{font-size:12.5px;margin-bottom:12px}.note b{font-weight:400;color:var(--ink)}
 .stat .v{font-size:22px}
+.amp{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--edge);margin-top:18px;max-width:720px;clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut))}
+.amp>div{background:var(--hull);padding:16px 16px 14px}.amp .x{font-family:'Michroma';font-size:22px}.amp .h{font-size:11.5px;color:var(--mut);letter-spacing:.08em;margin-top:6px}.amp>div.on{background:linear-gradient(100deg,#00c80522,#19d81f26,#7dff8a1c)}.amp>div.on .x{color:var(--a)}
 </style>
 </head>
 <body>
@@ -231,7 +233,7 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
       <div class="b"><div class="l">state</div><div class="v" style="font-size:13px;letter-spacing:.14em;color:var(--a);padding-top:7px">MUTED</div></div>
       <div class="b priv"><div class="l">mUSD · muted</div><div class="v"><span id="b-priv-red" class="redact">000000</span><span id="b-priv-val" style="display:none"></span><span class="reveal" id="b-priv-eye">reveal</span><span class="reveal" id="b-carbon" title="generate a read-only view key">mirror</span></div></div>
     </div>
-    <div class="kv" style="margin-top:12px;border:none"><span>Silent Yield · earned while muted</span><b id="q-me" style="color:var(--a)">—</b></div>
+    <div class="kv" style="margin-top:12px;border:none"><span>Silent Yield · earned while muted</span><b id="q-me" style="color:var(--a)">—</b></div><div class="kv" style="border:none;padding-top:0"><span>Amplifier</span><b id="amp-v">—</b></div>
     <div class="tabs">
       <button data-tab="deposit">Deposit</button><button data-tab="bond">Bond</button><button class="on" data-tab="mint">Mint</button><button data-tab="shield">Mute</button><button data-tab="send">Send</button><button data-tab="dark">Blind Desk</button><button data-tab="happy">Window</button><button data-tab="redeem">Redeem</button>
     </div>
@@ -272,7 +274,7 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <details><summary>Is my USDG actually deposited?</summary><div class="a">Yes. A deposit is a real <b>USDG transfer on Robinhood Chain to the treasury</b>. The server reads the transaction receipt, checks that the Transfer log runs from your wallet to the treasury, and only then credits your vault. Every deposited dollar sits in a treasury address you can open on the explorer.</div></details>
         <details><summary>How do I get USDG back out?</summary><div class="a">Redeem mUSD for USDG in your vault, then <b>Withdraw</b>. Withdrawals enter a queue the treasury pays from a cold wallet, usually within 24 hours, and the payout transaction hash is written next to your request. There is deliberately <b>no hot key on the server</b>.</div></details>
         <details><summary>What is Silent Yield?</summary><div class="a"><b>40% of every protocol fee, paid to muted mUSD holders.</b> Each time anyone mutes, sends, unmutes, redeems or trades on the Blind Desk, 40% of the fee is split pro-rata across every muted balance and credited as mUSD, inside the mute, in the same instant. There is no staking, no lock and nothing to claim. It is paid from fees that are already collateral-backed mUSD, so nothing is printed and it has no end date. The remaining fee still buys $MUTE and erases it.</div></details>
-        <details><summary>What is a Drop?</summary><div class="a">A pay link. You lock muted mUSD behind a random secret and share the link. Whoever opens it connects a wallet and the mUSD lands in <b>their</b> muted balance. The secret lives only in the link fragment; the server stores a hash of it, and the ledger shows one nullifier and one commitment, indistinguishable from any muted send. <i>One claim per drop.</i></div></details>
+        <details><summary>What is the Amplifier?</summary><div class="a">A boost on Silent Yield for $MUTE holders. Your muted balance is weighted by how much $MUTE you hold: <b>1.5x from 1M, 2x from 5M, 3x from 20M</b>. It counts $MUTE in your connected wallet, read on-chain every few minutes, plus $MUTE in your vault. It splits the same 40% fee stream, so nothing extra is printed.</div></details><details><summary>What is a Drop?</summary><div class="a">A pay link. You lock muted mUSD behind a random secret and share the link. Whoever opens it connects a wallet and the mUSD lands in <b>their</b> muted balance. The secret lives only in the link fragment; the server stores a hash of it, and the ledger shows one nullifier and one commitment, indistinguishable from any muted send. <i>One claim per drop.</i></div></details>
         <details><summary>What is a Mirror?</summary><div class="a">A <b>view key</b>: an HMAC over your address with a server salt, encoded together with your address so the mirror page can verify it. It reads your muted balance and history and has <b>no spending power</b>. This is the selective-disclosure model privacy coins use for audits: you choose who sees, and only they see.</div></details>
         <details><summary>How do Relays work?</summary><div class="a">When someone claims your Drop or connects through your link (<b>mutemoneyrh.xyz/?ref=your-address</b>) for the first time, they are bound to you. <b>20% of every fee they pay from then on</b> is credited to your visible mUSD, forever. The rest is split between Silent Yield and Erase. One relay per wallet, set once, never changed.</div></details>
         <details><summary>What is the Blind Desk?</summary><div class="a">Private exposure to tokenized stocks. You commit muted mUSD to a long or short in HOOD, TSLA, NVDA, SPY and others at 1x, priced off the live exchange tape. When you close, P&amp;L settles back into your muted balance. <b>Nobody can see what you hold, how much, or which way.</b> Positions are capped per wallet and protocol-wide, shorts stop out at a 95% loss, and orders fill only while the tape is fresh. The protocol is the counterparty; fees go to Erase.</div></details>
@@ -299,6 +301,10 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
       </div>
       <p class="fine">40% of every fee is split across muted balances the moment it is paid, as mUSD, inside the mute.</p>
       <p class="fine">No staking, no lock, nothing to claim. Funded by usage, so nothing is printed.</p>
+      <h2 style="margin-top:44px">The Amplifier<span class="tag">NEW</span></h2>
+      <p class="fine" style="margin-top:0">Hold $MUTE and your muted balance earns a bigger share of the same fee stream.</p>
+      <div class="amp" id="amp-tiers"></div>
+      <div class="kv" style="max-width:520px;margin-top:14px"><span>Your tier</span><b id="amp-me">connect to see</b></div>
       <div class="cta"><button class="btn fill" data-tabgo="shield">Mute mUSD</button></div>
     </section>
 

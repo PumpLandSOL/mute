@@ -76,7 +76,7 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--edge);font-si
   <div class="grp">Privacy</div>
   <a href="#mute">Mute &amp; unmute</a><a href="#send">Muted sends</a><a href="#drops">Drops</a><a href="#mirror">Mirror</a><a href="#signal">Signal</a>
   <div class="grp">Earn &amp; trade</div>
-  <a href="#silent">Silent Yield</a><a href="#desk">Blind Desk</a><a href="#bonds">Bonds &amp; Cryo</a><a href="#window">The Window</a><a href="#relays">Relays</a>
+  <a href="#silent">Silent Yield &amp; Amplifier</a><a href="#desk">Blind Desk</a><a href="#bonds">Bonds &amp; Cryo</a><a href="#window">The Window</a><a href="#relays">Relays</a>
   <div class="grp">$MUTE</div>
   <a href="#token">Token</a><a href="#erase">Erase</a><a href="#fees">Fees</a>
   <div class="grp">Reference</div>
@@ -186,6 +186,10 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--edge);font-si
     <li>No pool to run dry and no end date: it is funded by usage.</li>
   </ul>
   <pre>your_share = fee × (1 − relay_cut) × <b>0.40</b> × (your_muted / total_muted)</pre>
+  <h3>The Amplifier</h3>
+  <p>Hold $MUTE and your muted balance gets a bigger share of the same 40% stream. Your tier counts $MUTE in your connected wallet (read on-chain) plus $MUTE in your vault.</p>
+  <div class="tw"><table><tr><th>$MUTE held</th><th>Weight</th></tr><tr><td>none</td><td>1x</td></tr><tr><td>1,000,000+</td><td>1.5x</td></tr><tr><td>5,000,000+</td><td>2x</td></tr><tr><td>20,000,000+</td><td>3x</td></tr></table></div>
+  <pre>your_share = pool × (your_muted × your_mult) / Σ(muted × mult)</pre>
   <p>The Silent Yield channel shows the running 24h APR (computed from real fees), total paid, wallets earning, and what you have earned.</p>
 </section>
 

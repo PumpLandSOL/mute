@@ -147,3 +147,19 @@ Every mute, send and trade pays a fee:
 
 More privacy. More fees. Less $MUTE.
 ```
+
+**12 · Update 01: The Amplifier** (`brand/mute-amplifier-12s.mp4`, 204 chars)
+```
+UPDATE 01 · THE AMPLIFIER
+
+Silent Yield pays 40% of every MUTE fee to muted holders.
+
+Now $MUTE holders get a bigger cut:
+1M+ → 1.5x
+5M+ → 2x
+20M+ → 3x
+
+Hold $MUTE. Mute mUSD. Turn it up.
+
+mutemoneyrh.xyz
+```

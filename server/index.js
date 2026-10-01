@@ -56,13 +56,22 @@ const PUNCH_CUT = +(process.env.PUNCH_CUT || 0.20);   // share of every service 
 // Only fees paid by real wallets are shared. The fee is mUSD that is already collateral-backed, so paying it to holders prints nothing.
 const QUIET_CUT = +(process.env.QUIET_CUT || 0.40);
 if (!db.quiet) db.quiet = { paid: 0, n: 0, day: [] };
+// ---------- THE AMPLIFIER: $MUTE held boosts your share of Silent Yield ----------
+const AMP_TIERS = (process.env.AMP_TIERS || '1000000:1.5,5000000:2,20000000:3').split(',').map((t) => t.split(':').map(Number)).filter((t) => t[0] > 0 && t[1] >= 1).sort((x, y) => x[0] - y[0]);
+const AMP = {};   // wallet -> { bal, t } on-chain $MUTE balance cache
+function ampHeld(addr) { const w = db.wallets[addr]; return ((AMP[addr] && AMP[addr].bal) || 0) + ((w && w.mute) || 0); }
+function ampMult(addr) { const held = ampHeld(addr); let m = 1; for (const [min, x] of AMP_TIERS) if (held >= min) m = x; return m; }
+function ampView(addr) { const held = ampHeld(addr), m = ampMult(addr); const next = AMP_TIERS.find((t) => held < t[0]); return { held, mult: m, next: next ? { min: next[0], mult: next[1], need: next[0] - held } : null, read: AMP[addr] ? AMP[addr].t : 0 }; }
+async function ampRefresh(addr) { if (!MUTE_MINT || !isWallet(addr)) return; const c = AMP[addr]; if (c && Date.now() - c.t < 120e3) return; try { const bal = await balOf(MUTE_MINT, 18, addr); AMP[addr] = { bal, t: Date.now() }; } catch (e) {} }
+async function ampSweep() { const hs = Object.entries(db.wallets).filter(([, x]) => x.priv > 0.000001).map(([k]) => k).slice(0, 200); for (const k of hs) { await ampRefresh(k); await new Promise((r) => setTimeout(r, 150)); } }
+setInterval(ampSweep, 5 * 60e3); setTimeout(ampSweep, 15e3);
 function quietPay(pool) {
-  if (!(pool > 0)) return 0; const hs = Object.values(db.wallets).filter((x) => x.priv > 0.000001); const tot = hs.reduce((a, x) => a + x.priv, 0); if (!(tot > 0)) return 0;
-  for (const x of hs) { const g = pool * x.priv / tot; x.priv += g; x.quietEarned = (x.quietEarned || 0) + g; }
+  if (!(pool > 0)) return 0; const hs = Object.entries(db.wallets).filter(([, x]) => x.priv > 0.000001).map(([k, x]) => [x, x.priv * ampMult(k)]); const tot = hs.reduce((t, e) => t + e[1], 0); if (!(tot > 0)) return 0;
+  for (const [x, wt] of hs) { const g = pool * wt / tot; x.priv += g; x.quietEarned = (x.quietEarned || 0) + g; }
   db.shielded.totalValue += pool; const now = Date.now(); db.quiet.paid += pool; db.quiet.n++; db.quiet.day.push([now, pool]); while (db.quiet.day.length && now - db.quiet.day[0][0] > 864e5) db.quiet.day.shift();
   return pool;
 }
-function quietView() { const hs = Object.values(db.wallets).filter((x) => x.priv > 0.000001); const tot = hs.reduce((a, x) => a + x.priv, 0); const now = Date.now(); const d = db.quiet.day.filter((e) => now - e[0] <= 864e5).reduce((a, e) => a + e[1], 0); return { cut: QUIET_CUT, paid: db.quiet.paid, payouts: db.quiet.n, paid24h: d, holders: hs.length, muted: tot, apr: tot > 0 ? d * 365 / tot : 0 }; }
+function quietView() { const hs = Object.values(db.wallets).filter((x) => x.priv > 0.000001); const tot = hs.reduce((a, x) => a + x.priv, 0); const now = Date.now(); const d = db.quiet.day.filter((e) => now - e[0] <= 864e5).reduce((a, e) => a + e[1], 0); return { tiers: AMP_TIERS, amplified: Object.entries(db.wallets).filter(([k, x]) => x.priv > 0.000001 && ampMult(k) > 1).length, cut: QUIET_CUT, paid: db.quiet.paid, payouts: db.quiet.n, paid24h: d, holders: hs.length, muted: tot, apr: tot > 0 ? d * 365 / tot : 0 }; }
 function svc(kind, amt, w) {
   const f = amt * SVC[kind]; let cut = 0;
   if (w && w.ref && db.wallets[w.ref]) { cut = f * PUNCH_CUT; const fm = db.wallets[w.ref]; fm.musd += cut; fm.earned = (fm.earned || 0) + cut; db.punch.paid += cut; }
@@ -283,7 +292,7 @@ function metrics() {
     feed: sh.feed.slice(0, 10).map((t) => ({ sig: t.sig.slice(0, 6) + '…' + t.sig.slice(-4), type: t.type, publicAmount: t.publicAmount || null, ts: t.ts })),
   };
 }
-function account(addr) { const w = W(addr); const now = Date.now(); return { wallet: addr, usdg: w.usdg, mute: w.mute, musd: w.musd, priv: w.priv, deposited: w.deposited || 0, quietEarned: w.quietEarned || 0, dark: darkView(w), bonds: bondView(w, now), ref: w.ref || null, guests: w.guests || 0, earned: w.earned || 0, happy: happyView(w, now), queue: db.queue.filter((q) => q.wallet === addr.toLowerCase()).slice(0, 10) }; }
+function account(addr) { const w = W(addr); const now = Date.now(); ampRefresh(addr.toLowerCase()); return { amp: ampView(addr.toLowerCase()), wallet: addr, usdg: w.usdg, mute: w.mute, musd: w.musd, priv: w.priv, deposited: w.deposited || 0, quietEarned: w.quietEarned || 0, dark: darkView(w), bonds: bondView(w, now), ref: w.ref || null, guests: w.guests || 0, earned: w.earned || 0, happy: happyView(w, now), queue: db.queue.filter((q) => q.wallet === addr.toLowerCase()).slice(0, 10) }; }
 
 // ---------- http ----------
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };

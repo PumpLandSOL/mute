@@ -181,6 +181,13 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
   .ph{grid-template-columns:44px 1fr}.ph .st{grid-column:2;justify-self:start;margin-top:6px}
   .toast{right:12px;left:12px;bottom:14px}
 }
+/* clean pass */
+.lead b,.fine b,.step p b,.ph .dd b{font-weight:inherit;color:inherit}
+.fine{max-width:58ch;font-size:14.5px}.fine+.fine{margin-top:10px}
+.heroG h1{font-size:clamp(28px,3.1vw,44px);line-height:1.16}
+.heroG .orb{width:210px}.heroG{grid-template-columns:minmax(0,1fr) 210px}
+.note{font-size:12.5px;margin-bottom:12px}.note b{font-weight:400;color:var(--ink)}
+.stat .v{font-size:22px}
 </style>
 </head>
 <body>
@@ -239,8 +246,8 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
       <div class="heroG">
         <div>
           <h1>Dollars with<br>the <span class="iri">sound off.</span></h1>
-          <p class="lead"><b>mUSD</b> is a dollar on Robinhood Chain that you can mute. Mint it against USDG, mute it, and the <b>amount and both parties never reach the ledger</b>. Observers see that something moved. They never see who, to whom, or how much. <b>Visible when you choose. Silent when you don't.</b></p>
-          <div class="cta"><button class="btn fill" id="cta-demo">Deposit USDG · bond at −20%</button><button class="btn ghost" data-go="quiet">Silent Yield · earn 40% of all fees</button></div>
+          <p class="lead">A dollar on Robinhood Chain you can mute. Amount, sender and recipient never reach the ledger.</p>
+          <div class="cta"><button class="btn fill" id="cta-demo">Deposit USDG</button><button class="btn ghost" data-go="quiet">Silent Yield · 40% of fees</button></div>
         </div>
         <div class="orb"><i></i><i></i><i></i>
           <svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs><path d="M6 15h7l8-7v24l-8-7H6z" fill="#ecf6ee"/><path d="M27 14l8 12M35 14l-8 12" stroke="url(#lg2)" stroke-width="3.6" stroke-linecap="round"/></svg>
@@ -290,16 +297,15 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <div class="stat"><div class="l">wallets earning</div><div class="v" id="q-holders">—</div></div>
         <div class="stat"><div class="l">you have earned</div><div class="v g" id="q-me2">—</div></div>
       </div>
-      <p class="fine"><b>40% of every protocol fee is paid to the people holding muted mUSD.</b> Every mute, send, unmute, redeem and Blind Desk trade pays a fee. The moment it is paid, 40% of it is split across all muted balances, pro-rata, and lands <b>inside your muted balance as mUSD</b>. The rest still buys $MUTE and erases it.</p>
-      <p class="fine"><b>No staking. No lock. No claim button.</b> Mute mUSD and your balance grows every time anyone uses the protocol. Unmute whenever you like and keep everything you earned.</p>
-      <p class="fine"><b>Nothing is printed to pay for it.</b> The fee is mUSD that is already backed by USDG collateral, so Silent Yield is revenue, paid in dollars. It has no pool to run dry and no end date, because it is funded by usage. The more private money moves, the more the silent side earns.</p>
-      <div class="cta"><button class="btn fill" data-tabgo="shield">Mute mUSD and start earning</button></div>
+      <p class="fine">40% of every fee is split across muted balances the moment it is paid, as mUSD, inside the mute.</p>
+      <p class="fine">No staking, no lock, nothing to claim. Funded by usage, so nothing is printed.</p>
+      <div class="cta"><button class="btn fill" data-tabgo="shield">Mute mUSD</button></div>
     </section>
 
     <section class="ch" data-ch="signal">
       <div class="kick">01 · signal</div>
       <h2>What the ledger <span class="iri">can see.</span></h2>
-      <p class="fine" style="margin-top:0">Every entry below is public. Muted transfers appear as one nullifier and one commitment, with the amount and both parties absent. This is the entire footprint.</p>
+      <p class="fine" style="margin-top:0">Everything an observer can see. A muted transfer is one nullifier and one commitment.</p>
       <div class="led" id="feed"></div>
     </section>
 
@@ -313,7 +319,7 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <div class="stat"><div class="l">volume</div><div class="v" id="dk-vol">—</div></div>
         <div class="stat"><div class="l">fees → erase</div><div class="v" id="dk-fees">—</div></div>
       </div>
-      <p class="fine">Commit <b>muted mUSD</b> to tokenized stocks. Long or short, 1x, priced off the live exchange tape. Ticker, size, side and P&amp;L all stay muted; the ledger records one nullifier and one commitment, identical to any muted send. <b>30 bps</b> each way goes to Erase. Orders fill only while the tape is live.</p>
+      <p class="fine">Long or short tokenized stocks at 1x from your muted balance. Ticker, size and P&amp;L stay private.</p>
     </section>
 
     <section class="ch" data-ch="bonds">
@@ -327,8 +333,8 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <div class="stat"><div class="l">cryo price · $MUTE</div><div class="v" id="fg-price">—</div></div>
         <div class="stat"><div class="l">in cryo</div><div class="v" id="fg-locked">—</div></div>
       </div>
-      <p class="fine"><b>Bonds.</b> Deposit USDG and take <b>$MUTE at 20% below market</b>, vesting linearly over <b>5 days</b>. The USDG goes straight into the reserve and mints <b>nothing</b>, so every bond makes mUSD more collateralized. Daily capacity is capped, first come first served. Minimum 50 USDG.</p>
-      <p class="fine"><b>Cryo.</b> Lock the bond instead: <b>$MUTE at 30% below market</b>, held <b>48 hours</b>, and the locked MUTE <b>earns 80% APY in $MUTE</b> the whole time, paid from the Window's fixed pool. Nothing is printed. Bond, lock, earn, release.</p>
+      <p class="fine">Bonds: $MUTE at 20% off, vesting over 5 days. Your USDG goes to the reserve.</p>
+      <p class="fine">Cryo: 30% off, locked 48 hours, earning 80% APY while locked.</p>
     </section>
 
     <section class="ch" data-ch="window">
@@ -341,7 +347,7 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <div class="stat"><div class="l">closes in</div><div class="v" id="v-ends">—</div></div>
         <div class="stat"><div class="l">stakers</div><div class="v" id="v-n">—</div></div>
       </div>
-      <p class="fine">Temporary by design. Stake mUSD and earn a fixed APY paid in <b>$MUTE from a pool the treasury funded in advance</b>. Nothing is printed and no mUSD is created. When the pool or the clock runs out, the Window closes. <b>A yield with an end date can never become the thing holding up the peg.</b></p>
+      <p class="fine">Stake mUSD, earn $MUTE from a fixed pool. When the pool or the clock runs out, it closes.</p>
     </section>
 
     <section class="ch" data-ch="erase">
@@ -353,28 +359,28 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
         <div class="stat"><div class="l">queued · next cycle</div><div class="v" id="p-svc">—</div></div>
         <div class="stat"><div class="l">cycles</div><div class="v" id="p-ep">—</div></div>
       </div>
-      <p class="fine"><b>30 bps</b> on mute, send and unmute, <b>50 bps</b> on redeem. <b>40% streams to muted holders as Silent Yield.</b> The rest collects in USDG, and each cycle the protocol buys <b>$MUTE</b> at market and erases it from supply. <b>The erase receipt is public. The payer never is.</b></p>
+      <p class="fine">Fees fund Silent Yield. The rest buys $MUTE at market and removes it from supply.</p>
       <div class="led" id="shredfeed"></div>
     </section>
 
     <section class="ch" data-ch="relay">
       <div class="kick">06 · relays</div>
       <h2>Bring someone in. <span class="iri">20%, forever.</span></h2>
-      <p class="fine" style="margin-top:0">Anyone who claims your <b>Drop</b>, or arrives through your <b>relay link</b>, is bound to you. From then on <b>20% of every fee they pay</b> (mute, send, unmute, redeem) is credited to your mUSD. Not once. Every time. The rest is split between Silent Yield and Erase.</p>
+      <p class="fine" style="margin-top:0">Wallets that join through your link or claim your Drop pay you 20% of their fees, forever.</p>
       <div class="linkbox" id="punchbox" style="display:none"><code id="punchlink"></code><button id="punchcopy">Copy</button></div>
       <div class="read">
         <div class="stat"><div class="l">wallets you relayed</div><div class="v" id="f-guests">—</div></div>
         <div class="stat"><div class="l">earned from their fees</div><div class="v" id="f-earned">—</div></div>
       </div>
-      <p class="fine"><b>Top relays.</b> Addresses are masked. Relays are counted, never named.</p>
+      <p class="fine">Top relays · addresses masked</p>
       <div class="led" id="punchboard" style="margin-top:8px"></div>
     </section>
 
     <section class="ch" data-ch="drops">
       <div class="kick">07 · drops · mirror</div>
       <div class="duo">
-        <div><h2>Drop<span class="tag">PAY LINK</span></h2><p class="fine" style="margin-top:0"><b>Send muted dollars as a link.</b> Lock muted mUSD behind a secret; whoever opens the link claims it into <b>their own</b> muted balance. No recipient is ever named. On the ledger it is one nullifier and one commitment, the same as any muted send. Text it. DM it. Print it as a QR. Create one from the <b>Send</b> tab in the vault.</p></div>
-        <div><h2>Mirror<span class="tag">VIEW KEY</span></h2><p class="fine" style="margin-top:0"><b>Show one person. Nobody else.</b> Generate a view key and whoever holds it can read your muted balance and history on a mirror page. It <b>can never spend</b>. Hand it to an accountant, a partner, an auditor, and to nobody else. Generate one with <b>mirror</b> next to your muted balance.</p></div>
+        <div><h2>Drop<span class="tag">PAY LINK</span></h2><p class="fine" style="margin-top:0">Send muted dollars as a link. Whoever opens it claims them. No recipient is ever named.</p></div>
+        <div><h2>Mirror<span class="tag">VIEW KEY</span></h2><p class="fine" style="margin-top:0">A read-only key to your muted balance. Share it with one person. It can never spend.</p></div>
       </div>
     </section>
 
@@ -382,9 +388,9 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
       <div class="kick">08 · protocol</div>
       <h2>Three moves. <span class="iri">No names.</span></h2>
       <div class="steps">
-        <div class="step"><h3>Mint mUSD</h3><p>Deposit <b>USDG</b>. Most of it becomes hard collateral; the small algorithmic share <b>buys $MUTE at market and erases it</b>. You receive $1-pegged mUSD. Redeem any time to reverse it.</p></div>
-        <div class="step"><h3>Mute it</h3><p>Muted mUSD becomes a note <b>encrypted only to you</b>. Your balance is unreadable to everyone else.</p></div>
-        <div class="step"><h3>Send without a trace</h3><p>A muted send keeps <b>the amount and both parties hidden</b>. The ledger holds one nullifier and one new commitment. That is digital cash.</p></div>
+        <div class="step"><h3>Mint mUSD</h3><p>Deposit USDG and receive $1 mUSD. Redeem any time.</p></div>
+        <div class="step"><h3>Mute it</h3><p>Your mUSD becomes a note only you can read.</p></div>
+        <div class="step"><h3>Send without a trace</h3><p>Amount and both parties stay hidden. The ledger sees one nullifier, one commitment.</p></div>
       </div>
       <h2 style="margin-top:44px" id="road">Phases</h2>
       <div class="ph now"><div class="no">P1</div><div><div class="t">The ledger &amp; $MUTE</div><div class="dd">Real privacy primitives (commitments, nullifiers, encrypted notes), USDG deposits verified on Robinhood Chain, open mint and redeem.</div></div><span class="st">Live</span></div>

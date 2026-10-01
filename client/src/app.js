@@ -9,6 +9,7 @@ async function api(u, b) {
   return r;
 }
 const fmt = (n, d = 2) => (n == null || !isFinite(n)) ? '—' : (+n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+const px = (n) => (n == null || !isFinite(n)) ? '—' : n >= 1 ? fmt(n, 2) : n >= 0.01 ? fmt(n, 4) : (+n).toPrecision(3);
 const big = (n) => Math.abs(n) >= 1e6 ? fmt(n / 1e6, 2) + 'M' : Math.abs(n) >= 1e3 ? fmt(n / 1e3, 1) + 'K' : fmt(n, 0);
 const ago = (ts) => { const s = Math.max(0, (Date.now() - ts) / 1000); return s < 60 ? Math.floor(s) + 's ago' : Math.floor(s / 60) + 'm ago'; };
 function toast(m, err) { const t = $('toast'); t.textContent = m; t.className = 'toast on' + (err ? ' err' : ''); clearTimeout(toast._t); toast._t = setTimeout(() => t.className = 'toast', 2400); }
@@ -101,7 +102,7 @@ function renderMetrics() {
     $('dk-open').textContent = fmt(D.open, 0); $('dk-vol').textContent = '$' + big(D.volume); $('dk-fees').textContent = '$' + fmt(D.fees, 2);
   }
   if (M.bonds) { const Bd = M.bonds;
-    $('bd-price').textContent = '$' + fmt(Bd.price, 6); $('bd-market').textContent = '$' + fmt(Bd.market, 6); $('bd-left').textContent = '$' + fmt(Bd.leftToday, 0) + ' / $' + fmt(Bd.capUsd, 0); $('bd-sold').textContent = '$' + fmt(Bd.soldUsd, 0) + ' · ' + big(Bd.soldMute) + ' MUTE'; if (Bd.freezer) { $('fg-price').textContent = '$' + fmt(Bd.freezer.price, 6) + ' (−' + fmt(Bd.freezer.discount * 100, 0) + '%)'; $('fg-locked').textContent = big(Bd.freezer.lockedMute) + ' MUTE · ' + Bd.freezer.n + ' in cryo'; }
+    $('bd-price').textContent = '$' + px(Bd.price); $('bd-market').textContent = '$' + px(Bd.market); $('bd-left').textContent = '$' + fmt(Bd.leftToday, 0) + ' / $' + fmt(Bd.capUsd, 0); $('bd-sold').textContent = '$' + big(Bd.soldUsd); if (Bd.freezer) { $('fg-price').textContent = '$' + px(Bd.freezer.price); $('fg-locked').textContent = big(Bd.freezer.lockedMute) + ' MUTE'; }
   }
   if (M.happy) { const V = M.happy;
     $('v-apy').textContent = fmt(V.apy * 100, 0) + '%'; $('v-boost').textContent = V.boost && V.boost.live ? '⚡ boosted from ' + fmt(V.baseApy * 100, 0) + '% · ' + dur(V.boost.endsIn) + ' left' : ''; $('v-staked').textContent = big(V.staked) + ' / ' + big(V.cap);
@@ -117,7 +118,7 @@ function renderMetrics() {
   if (M.shred) { const P = M.shred;
     $('p-mute').textContent = big(P.burnedMute) + ' MUTE'; $('p-usd').textContent = '$' + big(P.burnedUsd);
     $('p-svc').textContent = '$' + fmt(P.svcUsd, 2) + ' / $' + P.minUsd; $('p-ep').textContent = fmt(P.epochs, 0);
-    $('shredfeed').innerHTML = P.burns.map((b) => `<div class="r"><span class="ty burn">erase</span><span class="sg">epoch ${b.epoch} · ${b.id} · @ $${fmt(b.px, 6)}</span><span class="am">− ${fmt(b.mute, 1)} MUTE</span></div>`).join('') || '<div class="r"><span class="sg">waiting on the first fees to erase…</span></div>';
+    $('shredfeed').innerHTML = P.burns.map((b) => `<div class="r"><span class="ty burn">erase</span><span class="sg">epoch ${b.epoch} · ${b.id} · @ $${px(b.px)}</span><span class="am">− ${fmt(b.mute, 1)} MUTE</span></div>`).join('') || '<div class="r"><span class="sg">waiting on the first fees to erase…</span></div>';
   }
   $('feed').innerHTML = (M.feed.length ? M.feed : []).map((t) => {
     const right = t.type === 'private' ? '<span class="redact">█████</span>'
@@ -154,23 +155,23 @@ function renderPanel() {
   const p = $('panel'); const cr = M ? M.cr : 0.9, vp = M ? M.mutePrice : 0.85;
   if (tab === 'seal') {
     const url = location.origin + '/view#' + carbonKey;
-    p.innerHTML = `<div class="note"><b>Mirror.</b> This view key opens a read-only mirror of your shielded balance and history. It <b>cannot spend</b>. Give it only to who you want to see.</div>
+    p.innerHTML = `<div class="note"><b>Mirror.</b> This view key opens a read-only mirror of your muted balance and history. It <b>cannot spend</b>. Give it only to who you want to see.</div>
       <div class="linkbox"><code id="vk">${url}</code><button id="cp">Copy</button></div>
       <div class="kv" style="margin-top:12px"><span>opens</span><b><a href="${url}" target="_blank" style="color:var(--gold)">mirror ↗</a></b></div>`;
     $('cp').onclick = () => { navigator.clipboard.writeText(url); toast('view key copied'); };
   } else if (tab === 'claim') {
-    p.innerHTML = `<div class="note"><b>You have a drop waiting.</b> Muted mUSD is locked behind this link. Claim it into your shielded balance.</div>
+    p.innerHTML = `<div class="note"><b>You have a drop waiting.</b> Muted mUSD is locked behind this link. Claim it into your muted balance.</div>
       <div class="kv"><span>amount</span><b id="cl-amt">…</b></div><div class="kv"><span>memo</span><b id="cl-memo">—</b></div>
       <button class="btn wide" id="act" style="margin-top:14px">Claim into my muted balance</button>`;
     api('/api/note/peek', { secret: claimSecret }).then((r) => { if (r.error) { $('cl-amt').textContent = r.error; $('act').disabled = true; return; } $('cl-amt').textContent = r.claimed ? 'already claimed' : fmt(r.amt, 2) + ' mUSD'; $('cl-memo').textContent = r.memo || '—'; if (r.claimed) $('act').disabled = true; });
     $('act').onclick = () => doAct('/api/note/claim', { secret: claimSecret, amount: 1 }, (r) => { history.replaceState(null, '', location.pathname); tab = 'send'; renderPanel(); return `claimed ${fmt(r.claimed, 2)} mUSD, muted`; });
   } else if (tab === 'dark') {
     const D = M && M.dark, pos = (A && A.dark) || [];
-    p.innerHTML = `<div class="note"><b>Blind Desk.</b> Commit muted mUSD to a stock. Long or short, 1x, live tape. Ticker, size and P&amp;L stay muted. 30 bps each way to Erase.</div>
+    p.innerHTML = `<div class="note">Long or short a stock from your muted balance. 1x, live tape.</div>
       <div style="display:flex;gap:10px"><div class="field" style="flex:1"><select id="sym" style="flex:1;background:none;border:none;color:var(--ink);font-family:'Sora';font-size:15px;outline:none">${(D ? D.markets : []).map((m) => `<option value="${m.sym}" ${m.fresh ? '' : 'disabled'}>${m.sym} ${m.px ? '· $' + fmt(m.px, 2) : ''}${m.fresh ? '' : ' · closed'}</option>`).join('')}</select></div>
       <div class="field" style="flex:0 0 150px"><select id="side" style="flex:1;background:none;border:none;color:var(--ink);font-family:'Sora';font-size:15px;outline:none"><option value="long">LONG</option><option value="short">SHORT</option></select></div></div>
       <div class="field"><input id="in" type="number" placeholder="10.00 minimum" min="10"><span class="u">mUSD</span><span class="mx" id="mx">MAX</span></div>
-      <div class="kv"><span>Shielded balance</span><b>${A ? (reveal ? fmt(A.priv, 2) : '<span class="redact">0000</span>') : '—'}</b></div><div class="kv"><span>Per position · pool</span><b>${D ? 'max ' + fmt(D.maxPos, 0) + ' · ' + (D.full ? 'full' : 'open') : '—'}</b></div>
+      <div class="kv"><span>Muted balance</span><b>${A ? (reveal ? fmt(A.priv, 2) : '<span class="redact">0000</span>') : '—'}</b></div><div class="kv"><span>Per position · pool</span><b>${D ? 'max ' + fmt(D.maxPos, 0) + ' · ' + (D.full ? 'full' : 'open') : '—'}</b></div>
       <button class="btn fill wide" id="act" style="margin-top:14px">Open muted</button>
       ${pos.length ? '<div style="margin-top:16px">' + pos.map((q) => `<div class="pos"><b>${q.sym}</b><span>${q.side}</span><span class="sg" style="font-family:'Sora';font-size:12px;color:var(--mut)">${fmt(q.notional, 2)} @ ${fmt(q.entry, 2)} → ${fmt(q.px, 2)}</span><span class="pnl ${q.pnl >= 0 ? 'up' : 'dn'}">${q.pnl >= 0 ? '+' : ''}${fmt(q.pnl, 2)}</span><button data-close="${q.id}" ${q.fresh ? '' : 'disabled'}>Close</button></div>`).join('') + '</div>' : ''}`;
     $('mx').onclick = () => { if (A) $('in').value = Math.min(A.priv, D ? D.maxPos : 1000); };
@@ -179,12 +180,12 @@ function renderPanel() {
   } else if (tab === 'bond') {
     const Bd = M && M.bonds, me = A && A.bonds;
     const F = Bd && Bd.freezer; if (typeof window.__lock === 'undefined') window.__lock = true; const L = window.__lock;
-    p.innerHTML = `<div class="note"><b>Bond USDG for $MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% below market.</b> Vests over ${Bd ? Bd.vestDays : 5} days. Your USDG goes to the reserve and mints nothing. ${Bd && !Bd.open ? '<b>Bonds are closed.</b>' : ''}</div>
+    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
       <div style="display:flex;gap:8px;margin:0 0 12px"><button class="btn ${L ? 'fill' : 'ghost'}" id="lk1" style="flex:1.3">CRYO · lock ${F ? F.lockDays * 24 : 48}h · −${F ? fmt(F.discount * 100, 0) : 30}% · ${F ? fmt(F.apy * 100, 0) : 80}% APY</button><button class="btn ${L ? 'ghost' : 'fill'}" id="lk0" style="flex:1">Standard bond · −${Bd ? fmt(Bd.discount * 100, 0) : 20}% · ${Bd ? Bd.vestDays : 5}d vest</button></div>
-      ${L ? `<div class="note" style="border-color:var(--gold)"><b>Cryo:</b> your USDG enters the bond pool, you take $MUTE at <b>${F ? fmt(F.discount * 100, 0) : 30}% below market</b>, locked <b>${F ? F.lockDays * 24 : 48} hours</b>. While locked it earns <b>${F ? fmt(F.apy * 100, 0) : 80}% APY in $MUTE</b>, paid from the Window's fixed pool. Nothing printed. Claim principal + yield at unlock.</div>` : ''}
+      ${L ? `<div class="note" style="border-color:var(--gold)">Cryo: ${F ? fmt(F.discount * 100, 0) : 30}% off, locked ${F ? F.lockDays * 24 : 48}h, earning ${F ? fmt(F.apy * 100, 0) : 80}% APY.</div>` : ''}
       <div class="field"><input id="in" type="number" placeholder="50.00 minimum" min="50"><span class="u">USDG</span><span class="mx" id="mx">MAX</span></div>
       <div class="kv"><span>USDG on ledger</span><b>${A ? fmt(A.usdg, 2) : '—'}</b></div>
-      <div class="kv"><span>${L ? 'cryo' : 'bond'} price · market</span><b>${Bd ? '$' + fmt(L && F ? F.price : Bd.price, 6) + ' · $' + fmt(Bd.market, 6) : '—'}</b></div>
+      <div class="kv"><span>${L ? 'cryo' : 'bond'} price · market</span><b>${Bd ? '$' + px(L && F ? F.price : Bd.price) + ' · $' + px(Bd.market) : '—'}</b></div>
       <div class="kv"><span>you receive</span><b id="o1">—</b></div>
       ${L ? '<div class="kv"><span>yield at unlock</span><b id="o2">—</b></div>' : ''}
       <div class="kv"><span>vesting · claimable now</span><b>${me ? big(me.pending) + ' · ' + big(me.claimable) + ' MUTE' : '—'}</b></div>
@@ -199,7 +200,7 @@ function renderPanel() {
     $('act3').onclick = () => doAct('/api/withdraw', { asset: 'MUTE', amount: A ? A.mute : 0 }, (r) => `queued ${big(r.queued.amt)} MUTE for payout`);
     $('go-dep').onclick = (e) => { e.preventDefault(); tab = 'deposit'; document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.tab === 'deposit')); renderPanel(); };
   } else if (tab === 'deposit') {
-    p.innerHTML = `<div class="note">Send <b>USDG on Robinhood Chain</b> to the treasury and it is credited to your ledger once the receipt confirms. <b>Every deposited dollar sits in the treasury address</b> — check it on the explorer any time.</div>
+    p.innerHTML = `<div class="note">Send USDG on Robinhood Chain. Credited once the receipt confirms. Minimum 50.</div>
       <div class="field"><input id="in" type="number" placeholder="50.00 minimum" min="50"><span class="u">USDG</span></div>
       <div class="kv"><span>Treasury</span><b>${M && M.treasury ? M.treasury.slice(0, 8) + '…' + M.treasury.slice(-6) : '—'}</b></div>
       <div class="kv"><span>Credited so far</span><b>${A ? fmt(A.deposited, 2) + ' USDG' : '—'}</b></div>
@@ -211,7 +212,7 @@ function renderPanel() {
     $('act2').onclick = () => doAct('/api/deposit', { tx: ($('tx').value || '').trim(), amount: 1 }, (r) => `credited ${fmt(r.amt, 2)} USDG from the treasury deposit`);
   } else if (tab === 'happy') {
     const V = M && M.happy, me = A && A.happy;
-    p.innerHTML = `<div class="note">Stake public mUSD in <b>the Window</b>: <b>${V ? fmt(V.apy * 100, 0) : '—'}% APY</b> for 30 days, paid in <b>$MUTE</b> from a pre-funded pool. Unstake any time (30 bps fee). ${V && !V.live ? '<b>The Window is ' + (V.startsIn > 0 ? 'not open yet' : 'over') + '.</b>' : ''}</div>
+    p.innerHTML = `<div class="note">Stake mUSD for ${V ? fmt(V.apy * 100, 0) : '—'}% APY in $MUTE. Unstake any time. ${V && !V.live ? 'The Window is ' + (V.startsIn > 0 ? 'not open yet' : 'over') + '.' : ''}</div>
       <div class="field"><input id="in" type="number" placeholder="0.00" min="0"><span class="u">mUSD</span><span class="mx" id="mx">MAX</span></div>
       <div class="kv"><span>Public mUSD</span><b>${A ? fmt(A.musd, 2) : '—'}</b></div>
       <div class="kv"><span>Staked</span><b>${me ? fmt(me.staked, 2) + ' mUSD' : '—'}</b></div>
@@ -222,26 +223,26 @@ function renderPanel() {
     $('act2').onclick = () => doAct('/api/unstake', { amount: +$('in').value }, (r) => `unstaked ${fmt(r.unstaked, 2)} mUSD`);
     $('act3').onclick = () => doAct('/api/claim', { amount: 1 }, (r) => `claimed ${fmt(r.claimedMute, 1)} MUTE`);
   } else if (tab === 'mint') {
-    p.innerHTML = `<div class="note">Mint $1-pegged <b>mUSD</b> with deposited USDG: <b>${fmt(cr * 100, 0)}% goes to collateral</b>, the <b>${fmt((1 - cr) * 100, 0)}% algorithmic share buys MUTE at market and burns it</b>. Nothing is printed.</div>
+    p.innerHTML = `<div class="note">Mint $1 mUSD from deposited USDG.</div>
       <div class="field"><input id="in" type="number" placeholder="0.00" min="0"><span class="u">mUSD</span></div>
       <div class="kv"><span>USDG collateral (${fmt(cr * 100, 0)}%)</span><b id="o1">—</b></div><div class="kv"><span>USDG → buys &amp; burns MUTE (${fmt((1 - cr) * 100, 0)}%)</span><b id="o2">—</b></div>
       <button class="btn wide" id="act" style="margin-top:14px">Mint mUSD</button>`;
     $('in').oninput = () => { const m = +$('in').value || 0; $('o1').textContent = fmt(m * cr, 2) + ' USDG'; $('o2').textContent = fmt(m * (1 - cr), 2) + ' USDG ≈ ' + fmt((m * (1 - cr)) / vp, 0) + ' MUTE'; };
     $('act').onclick = () => doAct('/api/mint', { amount: +$('in').value }, (r) => `minted ${fmt(r.minted, 0)} mUSD`);
   } else if (tab === 'shield') {
-    p.innerHTML = `<div class="note">Move public mUSD into the <b>shielded pool</b>. It becomes a note <b>encrypted only to you</b> — your balance is unreadable on-chain.</div>
+    p.innerHTML = `<div class="note">Mute mUSD. Only you can read the balance, and it earns Silent Yield.</div>
       <div class="field"><input id="in" type="number" placeholder="0.00" min="0"><span class="u">mUSD</span><span class="mx" id="mx">MAX</span></div>
       <div class="kv"><span>Public mUSD available</span><b>${A ? fmt(A.musd, 2) : '—'}</b></div>
-      <button class="btn wide" id="act" style="margin-top:14px">Shield mUSD</button>`;
+      <button class="btn wide" id="act" style="margin-top:14px">Mute mUSD</button>`;
     $('mx').onclick = () => { if (A) $('in').value = A.musd; };
-    $('act').onclick = () => doAct('/api/shield', { amount: +$('in').value }, (r) => `shielded ${fmt(r.shielded, 2)} mUSD`);
+    $('act').onclick = () => doAct('/api/shield', { amount: +$('in').value }, (r) => `muted ${fmt(r.shielded, 2)} mUSD`);
   } else if (tab === 'send') {
-    p.innerHTML = `<div class="note">Send muted mUSD. The <b>amount and both parties never appear</b> — the ledger records only a nullifier + a new commitment.</div>
+    p.innerHTML = `<div class="note">Send muted. Amount and both parties stay hidden.</div>
       <div class="field"><input id="to" placeholder="recipient Robinhood Chain address…" spellcheck="false"></div>
       <div class="field"><input id="in" type="number" placeholder="0.00" min="0"><span class="u">mUSD</span><span class="mx" id="mx">MAX</span></div>
       <div class="kv"><span>Your private balance</span><b>${A ? (reveal ? fmt(A.priv, 2) : '<span class="redact">0000</span>') : '—'}</b></div>
       <button class="btn wide" id="act" style="margin-top:14px">Send muted</button>
-      <div class="note" style="margin:18px 0 8px"><b>Or leave a drop:</b> no address needed. Lock the amount above behind a link and send the link to anyone.</div>
+      <div class="note" style="margin:18px 0 8px">Or create a Drop link, no address needed.</div>
       <div class="field"><input id="memo" placeholder="memo (optional, seen only by the claimer)" maxlength="80"></div>
       <button class="btn ghost wide" id="act2">Create drop link</button>
       ${lastNote ? '<div class="linkbox"><code>' + lastNote + '</code><button id="cpn">Copy</button></div>' : ''}`;
@@ -250,15 +251,15 @@ function renderPanel() {
     $('act2').onclick = () => doAct('/api/note/create', { amount: +$('in').value, memo: $('memo').value }, (r) => { lastNote = location.origin + '/#claim=' + r.secret; renderPanel(); return `drop created with ${fmt(r.amt, 2)} mUSD. copy the link`; });
     if ($('cpn')) $('cpn').onclick = () => { navigator.clipboard.writeText(lastNote); toast('link copied'); };
   } else {
-    p.innerHTML = `<div class="note">Burn mUSD to recover your <b>${fmt(cr * 100, 0)}% USDG</b> plus the <b>${fmt((1 - cr) * 100, 0)}% MUTE</b> share. (Unshield private mUSD first to redeem it.)</div>
+    p.innerHTML = `<div class="note">Redeem visible mUSD for USDG. Unmute first if it is muted.</div>
       <div class="field"><input id="in" type="number" placeholder="0.00" min="0"><span class="u">mUSD</span><span class="mx" id="mx">MAX</span></div>
       <div class="kv"><span>Public mUSD</span><b>${A ? fmt(A.musd, 2) : '—'}</b></div>
       <div class="kv"><span>USDG on ledger</span><b>${A ? fmt(A.usdg, 2) : '—'}</b></div>
-      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn ghost" id="act2" style="flex:1">Unshield</button><button class="btn" id="act" style="flex:1">Redeem</button><button class="btn ghost" id="act3" style="flex:1">Withdraw USDG</button></div>
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn ghost" id="act2" style="flex:1">Unmute</button><button class="btn" id="act" style="flex:1">Redeem</button><button class="btn ghost" id="act3" style="flex:1">Withdraw USDG</button></div>
       ${A && A.queue && A.queue.length ? '<div class="note" style="margin-top:14px">' + A.queue.map((q) => '<div class="kv"><span>withdraw ' + fmt(q.amt, 2) + ' ' + (q.asset || 'USDG') + ' · ' + q.id + '</span><b>' + (q.status === 'paid' ? 'paid' + (q.tx ? ' · ' + q.tx.slice(0, 10) + '…' : '') : 'queued · treasury pays within 24h') + '</b></div>').join('') + '</div>' : ''}`;
     $('mx').onclick = () => { if (A) $('in').value = A.musd; };
     $('act').onclick = () => doAct('/api/redeem', { amount: +$('in').value }, (r) => `redeemed ${fmt(r.redeemed, 0)} mUSD`);
-    $('act2').onclick = () => doAct('/api/unshield', { amount: +$('in').value }, (r) => `unshielded ${fmt(r.unshielded, 2)} mUSD`);
+    $('act2').onclick = () => doAct('/api/unshield', { amount: +$('in').value }, (r) => `unmuted ${fmt(r.unshielded, 2)} mUSD`);
     $('act3').onclick = () => doAct('/api/withdraw', { amount: +$('in').value }, (r) => `queued ${fmt(r.queued.amt, 2)} USDG for payout`);
   }
 }

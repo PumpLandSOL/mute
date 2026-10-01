@@ -20,6 +20,9 @@ const SIZES = {
   'mute-features': [2400, 1350],
   'mute-ledger': [2400, 1350],
   'mute-vs': [2400, 1350],
+  'mute-bull-zec': [2400, 1350],
+  'mute-bull-stables': [2400, 1350],
+  'mute-bull-flywheel': [2400, 1350],
 };
 
 const only = process.argv[2];

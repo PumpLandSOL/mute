@@ -105,3 +105,45 @@ mUSD is both, done right:
 
 mutemoneyrh.xyz
 ```
+
+## Bullish set
+
+**9 · ZEC chart** (`brand/mute-bull-zec.png`, 243 chars)
+```
+ZEC went from $120 to $1,413 in 12 months.
++1,076%. $24B market cap.
+
+The market already decided privacy is worth paying for.
+
+It just never had a private dollar.
+
+mUSD on Robinhood Chain. Mute it and the ledger hears nothing.
+
+mutemoneyrh.xyz
+```
+
+**10 · stablecoins** (`brand/mute-bull-stables.png`, 185 chars)
+```
+$312.6B in stablecoins.
+
+Every single transfer: sender, recipient, amount. Public. Forever.
+
+The biggest market in crypto has no mute button.
+
+Now it does.
+
+mUSD · $MUTE
+mutemoneyrh.xyz
+```
+
+**11 · flywheel** (`brand/mute-bull-flywheel.png`, 214 chars)
+```
+Every private dollar that moves works for $MUTE.
+
+Every mute, send and trade pays a fee:
+· 20% to whoever brought you
+· 40% to muted holders
+· the rest buys $MUTE and erases it
+
+More privacy. More fees. Less $MUTE.
+```

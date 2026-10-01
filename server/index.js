@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8220;
 const ROOT = path.join(__dirname, '..');
 const DATA_PATH = process.env.DATA_PATH || path.join(ROOT, 'data.json');
 const STABLE = 'mUSD', GOV = 'MUTE';
-const MUTE_MINT = process.env.MUTE_MINT || '';   // $MUTE on Robinhood Chain — set at launch
+const MUTE_MINT = (process.env.MUTE_MINT || '0xa8fbb4ccfc12ac54c31d6be405ebd33416e1c270').toLowerCase();   // $MUTE on Robinhood Chain — set at launch
 const TREASURY = (process.env.TREASURY || '0x580Aa9df627A396F32aE649EC427a4Cb430a5eD2');   // MUTE treasury on Robinhood Chain: every USDG deposit is verified against this address
 const TICK_SEC = +(process.env.TICK_SEC || 5);
 const SEED = { usdg: 0, mute: 0, musd: 0, priv: 0 };   // real deposits only — nothing is seeded
@@ -239,7 +239,9 @@ function shieldNote(amount, recipPub) { const bl = base58(randomBytes(8)); const
 
 // ---------- $MUTE price: Robinhood Chain pools (DexScreener) when MUTE_MINT is set ----------
 let MUTE_LIVE = { px: 0, liq: 0, pair: '', t: 0 };
-const LIVE_PX = () => MUTE_LIVE.px > 0 && Date.now() - MUTE_LIVE.t < 10 * 60e3;   // a real, recent $MUTE price
+const MIN_LIQ = +(process.env.MIN_LIQ_USD || 5000);   // pool depth needed before bonds / $MUTE payouts price off it
+const SEEN_PX = () => MUTE_LIVE.px > 0 && Date.now() - MUTE_LIVE.t < 10 * 60e3;   // a real, recent $MUTE price (display)
+const LIVE_PX = () => SEEN_PX() && MUTE_LIVE.liq >= MIN_LIQ;   // deep enough to price bonds, payouts and the CR off
 const CR_TARGET = +(process.env.CR_TARGET || 0.9);
 let MUTE_SUPPLY = 0;
 async function pollMuteSupply() { if (!MUTE_MINT) return; try { MUTE_SUPPLY = hexToNum(await rpc('eth_call', [{ to: MUTE_MINT, data: '0x18160ddd' }, 'latest']), 18); } catch (e) {} }
@@ -271,7 +273,7 @@ function metrics() {
     musdPrice: 1, pegStatus: 'at', muteTrading: LIVE_PX(), reserveOnchain: CHAIN.ok ? CHAIN.treasuryUsdg : null,
     musdSupply: db.musdSupply, musdMarketCap: db.musdPrice * db.musdSupply,
     cr: db.cr, collateralUsd: db.collateralUsd, backingRatio: backing,
-    mutePrice: LIVE_PX() ? MUTE_LIVE.px : null, muteSupply: MUTE_SUPPLY || null, muteMarketCap: LIVE_PX() && MUTE_SUPPLY ? MUTE_LIVE.px * MUTE_SUPPLY : null, muteLiquidity: LIVE_PX() ? MUTE_LIVE.liq : null,
+    mutePrice: SEEN_PX() ? MUTE_LIVE.px : null, muteSupply: MUTE_SUPPLY || null, muteMarketCap: SEEN_PX() && MUTE_SUPPLY ? MUTE_LIVE.px * MUTE_SUPPLY : null, muteLiquidity: SEEN_PX() ? MUTE_LIVE.liq : null, minLiq: MIN_LIQ,
     minDeposit: MIN_DEPOSIT, chain: { ok: CHAIN.ok, block: CHAIN.block, treasuryUsdg: CHAIN.treasuryUsdg, treasuryMute: CHAIN.treasuryMute, lastRead: CHAIN.lastRead, usdg: USDG.addr, rpc: RPCS[0] },
     deposits: { usdg: db.treasuryIn.usdg, n: db.treasuryIn.n }, dark: { markets: Object.keys(DARK_FEED).map((sym) => ({ sym, px: TAPE[sym] ? TAPE[sym].px : null, ts: TAPE[sym] ? TAPE[sym].ts : null, fresh: tapeFresh(sym) })), open: db.dark.open, opened: db.dark.opened, closed: db.dark.closed, volume: db.dark.volume, fees: db.dark.fees, liqs: db.dark.liqs, fee: DARK.fee, maxPos: DARK.maxPos, maxOi: DARK.maxOi, full: db.dark.oi >= DARK.maxOi }, bonds: (() => { const B = bondDay(); return { discount: BOND.discount, vestDays: BOND.vestMs / 864e5, capUsd: BOND.capUsd, leftToday: Math.max(0, BOND.capUsd - B.dayUsd), soldUsd: B.soldUsd, soldMute: B.soldMute, n: B.n, price: LIVE_PX() ? bondPrice() : null, market: LIVE_PX() ? db.mutePrice : null, end: BOND.end, open: Date.now() <= BOND.end && LIVE_PX(), waitingForMute: !LIVE_PX(), min: BOND.min, freezer: { discount: BOND.lockDiscount, lockDays: BOND.lockMs / 864e5, apy: BOND.lockApy, price: LIVE_PX() ? freezerPrice() : null, lockedMute: db.freezer.lockedMute, usd: db.freezer.usd, n: db.freezer.n, yieldMute: db.freezer.yieldMute } }; })(), punch: { cut: PUNCH_CUT, guests: db.punch.guests, paid: db.punch.paid, board: referrers() }, notes: { created: Object.keys(db.links).length, open: Object.values(db.links).filter((L) => !L.claimed).length, claimed: Object.values(db.links).filter((L) => L.claimed).length }, queue: { open: db.queue.filter((q) => q.status === 'queued').length, openUsd: db.queue.filter((q) => q.status === 'queued').reduce((a, q) => a + q.amt, 0), paid: db.queue.filter((q) => q.status === 'paid').length },
     happy: { ...HAPPY, apy: happyApy(Date.now()), baseApy: HAPPY.apy, boost: { apy: HAPPY_BOOST.apy, end: HAPPY_BOOST.end, live: Date.now() < HAPPY_BOOST.end, endsIn: Math.max(0, HAPPY_BOOST.end - Date.now()) }, live: happyLive(Date.now()), staked: db.happy.staked, stakers: db.happy.stakers, paidMute: db.happy.paidMute, paidUsd: db.happy.paidUsd, poolLeft: Math.max(0, HAPPY.pool - db.happy.paidMute), poolLeftUsd: Math.max(0, HAPPY.pool - db.happy.paidMute) * db.mutePrice, endsIn: Math.max(0, HAPPY.end - Date.now()), startsIn: Math.max(0, HAPPY.start - Date.now()) },
@@ -315,7 +317,7 @@ http.createServer(async (req, res) => {
     if (u === '/api/dev/faucet' && process.env.DEV_FAUCET === '1') { w.usdg += num(d.amount) || 0; save(); return json(res, 200, { ok: true, ...account(d.wallet) }); }   // LOCAL TESTING ONLY — never set DEV_FAUCET in production
     if (u === '/api/deposit') { try { const r = await creditDeposit(d.wallet.toLowerCase(), d.tx); return json(res, 200, { ok: true, ...r, ...account(d.wallet) }); } catch (e) { return json(res, 200, { error: String(e.message || e) }); } }
     if (u === '/api/bond') { // USDG ledger -> discounted MUTE, vested. USDG stays in reserve. Nothing minted.
-      const now = Date.now(); if (now > BOND.end) return json(res, 200, { error: 'bonds are closed' }); if (!LIVE_PX()) return json(res, 200, { error: 'bonds open once $MUTE trades' });
+      const now = Date.now(); if (now > BOND.end) return json(res, 200, { error: 'bonds are closed' }); if (!LIVE_PX()) return json(res, 200, { error: 'bonds open once the $MUTE pool has $' + MIN_LIQ.toLocaleString() + ' liquidity' });
       const x = num(d.amount, w.usdg); if (!x) return json(res, 200, { error: 'not enough USDG — deposit first' }); if (x < BOND.min) return json(res, 200, { error: 'minimum bond is ' + BOND.min + ' USDG' });
       const B = bondDay(); if (B.dayUsd + x > BOND.capUsd) return json(res, 200, { error: 'today\'s bond capacity is spent — ' + (BOND.capUsd - B.dayUsd).toFixed(2) + ' USDG left' });
       const lock = !!d.lock; const price = lock ? freezerPrice() : bondPrice(); const mute = x / price;

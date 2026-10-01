@@ -67,7 +67,7 @@ const MOCK = `(() => {
     t = await act('shield', `set(600)`); a = await acc(); ok('mute via UI', a.priv > 595 && a.priv < 600.01, t + ' priv=' + a.priv);
     t = await act('send', `$('to').value='${OTHER}';set(50)`); a = await acc(); ok('muted send via UI', a.priv < 550 && !/err/.test(t), t);
     t = await act('send', `set(25);$('memo').value='hi'`, 'act2'); const link = await js(`return (document.querySelector('.linkbox code')||{}).textContent||''`); ok('drop link via UI', /#claim=/.test(link), t);
-    t = await act('bond', `set(100)`); a = await acc(); ok('bond waits for a real $MUTE price', a.bonds.list.length === 0 && /once .MUTE trades/.test(t), t);
+    t = await act('bond', `set(100)`); a = await acc(); ok('bond waits for a real $MUTE price', a.bonds.list.length === 0 && /bonds open once/.test(t), t);
     t = await act('happy', `set(200)`); a = await acc(); ok('Window stake via UI', a.happy.staked === 200, t);
     t = await act('dark', `set(100)`); a = await acc(); ok('Blind Desk open via UI (needs live tape)', a.dark.length === 1 || /tape|closed|market/i.test(t), t);
     t = await act('redeem', `set(100)`); a = await acc(); ok('redeem via UI', a.musd < 700 && !/err/.test(t), t);

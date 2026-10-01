@@ -180,7 +180,7 @@ function renderPanel() {
   } else if (tab === 'bond') {
     const Bd = M && M.bonds, me = A && A.bonds;
     const F = Bd && Bd.freezer; if (typeof window.__lock === 'undefined') window.__lock = true; const L = window.__lock;
-    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && Bd.waitingForMute ? 'Opens once $MUTE trades.' : Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
+    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && Bd.waitingForMute ? 'Opens once the $MUTE pool is deep enough.' : Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
       <div style="display:flex;gap:8px;margin:0 0 12px"><button class="btn ${L ? 'fill' : 'ghost'}" id="lk1" style="flex:1.3">CRYO · lock ${F ? F.lockDays * 24 : 48}h · −${F ? fmt(F.discount * 100, 0) : 30}% · ${F ? fmt(F.apy * 100, 0) : 80}% APY</button><button class="btn ${L ? 'ghost' : 'fill'}" id="lk0" style="flex:1">Standard bond · −${Bd ? fmt(Bd.discount * 100, 0) : 20}% · ${Bd ? Bd.vestDays : 5}d vest</button></div>
       ${L ? `<div class="note" style="border-color:var(--gold)">Cryo: ${F ? fmt(F.discount * 100, 0) : 30}% off, locked ${F ? F.lockDays * 24 : 48}h, earning ${F ? fmt(F.apy * 100, 0) : 80}% APY.</div>` : ''}
       <div class="field"><input id="in" type="number" placeholder="50.00 minimum" min="50"><span class="u">USDG</span><span class="mx" id="mx">MAX</span></div>

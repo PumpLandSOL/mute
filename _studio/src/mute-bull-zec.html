@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="_base.css"><script src="zec-1y.js"></script><style>
+body{width:2400px;height:1350px}.pad{position:absolute;inset:90px 130px}
+.kick{font-family:Michroma;font-size:22px;letter-spacing:.3em;color:#6f8577;text-transform:uppercase}
+h1{font-family:Michroma;font-weight:400;text-transform:uppercase;line-height:1.12;font-size:76px;margin-top:26px}
+.row{display:flex;gap:90px;margin-top:40px}.k .l{font-size:24px;letter-spacing:.14em;color:#a9bcae;text-transform:uppercase}.k .v{font-family:Michroma;font-size:64px;margin-top:10px}
+#chart{position:absolute;left:130px;right:130px;top:640px;height:470px}
+.foot{position:absolute;left:130px;right:130px;bottom:58px;display:flex;justify-content:space-between;align-items:center;font-size:25px;letter-spacing:.18em;color:#a9bcae}
+.foot b{font-family:Michroma;font-weight:400;letter-spacing:.34em;color:#ecf6ee;display:flex;align-items:center;gap:22px}
+.src{position:absolute;right:130px;bottom:24px;font-size:17px;color:#6f8577}
+</style><body><div class="amb"></div><div class="scan"></div><div class="pad">
+<div class="kick">the market already priced privacy</div>
+<h1>ZEC did <span class="iri">+1,076%</span> in a year.<br>Next: the private dollar.</h1>
+<div class="row"><div class="k"><div class="l">ZEC · Oct 2025</div><div class="v">$120</div></div><div class="k"><div class="l">ZEC · today</div><div class="v iri">$1,413</div></div><div class="k"><div class="l">ZEC market cap</div><div class="v">$24.0B</div></div></div>
+</div>
+<svg id="chart" viewBox="0 0 2140 470" preserveAspectRatio="none"><defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#19d81f" stop-opacity=".35"/><stop offset="1" stop-color="#19d81f" stop-opacity="0"/></linearGradient><linearGradient id="s" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs><path id="area" fill="url(#f)"/><path id="line" fill="none" stroke="url(#s)" stroke-width="5" stroke-linejoin="round"/></svg>
+<div class="foot"><b><svg viewBox="0 0 40 40" style="width:54px"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs><path d="M6 15h7l8-7v24l-8-7H6z" fill="#ecf6ee"/><path d="M27 14l8 12M35 14l-8 12" stroke="url(#lg)" stroke-width="3.6" stroke-linecap="round"/></svg>MUTE</b><span>the private dollar on Robinhood Chain · mutemoneyrh.xyz</span></div>
+<div class="src">ZEC daily close, CoinGecko, 2025-10-02 to 2026-09-30</div>
+<script>
+const P=window.ZEC,W=2140,H=470,mx=Math.max(...P.map(p=>p[1]))*1.05;
+const pts=P.map((p,i)=>[i/(P.length-1)*W,H-p[1]/mx*H]);
+const d='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L');
+document.getElementById('line').setAttribute('d',d);document.getElementById('area').setAttribute('d',d+'L'+W+','+H+'L0,'+H+'Z');
+</script>

@@ -273,6 +273,49 @@ function tick() {
   save();
 }
 
+// ---------- $MUTE cover: never sell or pay out $MUTE the treasury does not hold on-chain ----------
+function muteOwed() { let t = 0; for (const w of Object.values(db.wallets)) { t += w.mute || 0; for (const b of w.bonds || []) t += Math.max(0, b.mute - (b.claimed || 0)) + (b.lock ? b.mute * BOND.lockApy * BOND.lockMs / 31536000000 : 0); } t += db.queue.filter((q) => q.status === 'queued' && q.asset === 'MUTE').reduce((a, q) => a + q.amt, 0); return t; }
+const muteFree = () => (CHAIN.ok ? CHAIN.treasuryMute : 0) - muteOwed();
+
+// ---------- SOUND CHECK: Merkle-sum proof of liabilities vs on-chain reserve ----------
+const hx = (str) => createHash('sha256').update(str).digest('hex');
+const ZERO = { h: hx('mute|empty'), s: 0 };
+const SC_FRAG = 4;
+const cents = (n) => Math.max(0, Math.round((+n || 0) * 100));
+function liabOf(addr, w) {
+  const dark = darkView(w).reduce((t, p) => t + Math.max(0, p.notional + p.pnl), 0);
+  const queued = db.queue.filter((q) => q.wallet === addr && q.status === 'queued' && (q.asset || 'USDG') === 'USDG').reduce((t, q) => t + q.amt, 0);
+  return (w.usdg || 0) + (w.musd || 0) + (w.priv || 0) + (w.stake || 0) + dark + queued;
+}
+let SC = { root: ZERO.h, total: 0, leaves: 0, ts: 0, levels: [[ZERO]], index: {}, history: [] };
+function buildSoundCheck() {
+  // each balance is split into SC_FRAG random fragments and all fragments are shuffled, so a sibling in any proof
+  // is a random piece of an unknown wallet's balance, never someone's exact balance
+  const frags = [];
+  for (const [addr, w] of Object.entries(db.wallets)) {
+    const c = cents(liabOf(addr, w)); if (!c) continue;
+    if (!w.scSalt) w.scSalt = randomBytes(16).toString('hex');
+    const cuts = Array.from({ length: SC_FRAG - 1 }, () => randomInt(0, c + 1)).sort((x, y) => x - y); let prev = 0;
+    cuts.concat([c]).forEach((cut, j) => { const part = cut - prev; prev = cut; const nonce = randomBytes(8).toString('hex'); frags.push({ addr, j, nonce, part, h: hx('leaf|' + addr + '|' + w.scSalt + '|' + nonce + '|' + part), s: part }); });
+  }
+  for (let i = frags.length - 1; i > 0; i--) { const k = randomInt(0, i + 1); [frags[i], frags[k]] = [frags[k], frags[i]]; }
+  const index = {}; frags.forEach((fr, i) => { (index[fr.addr] = index[fr.addr] || []).push({ i, nonce: fr.nonce, part: fr.part }); });
+  const leaves = frags.map((fr) => ({ h: fr.h, s: fr.s }));
+  let lv = leaves.length ? leaves : [ZERO]; const levels = [lv];
+  while (lv.length > 1) { const nx = []; for (let i = 0; i < lv.length; i += 2) { const L = lv[i], R = lv[i + 1] || ZERO; nx.push({ h: hx('node|' + L.h + '|' + R.h + '|' + (L.s + R.s)), s: L.s + R.s }); } lv = nx; levels.push(lv); }
+  const top = lv[0]; const now = Date.now();
+  SC = { root: top.h, total: top.s, leaves: Object.keys(index).length, ts: now, levels, index, history: [{ root: top.h, total: top.s, leaves: Object.keys(index).length, ts: now, reserve: CHAIN.ok ? CHAIN.treasuryUsdg : null, block: CHAIN.block }].concat(SC.history).slice(0, 48) };
+}
+function soundProof(addr) {
+  const mine = SC.index[addr]; if (!mine) return null; const w = db.wallets[addr];
+  const fragments = mine.map(({ i, nonce, part }) => { const path = []; let k = i;
+    for (let d = 0; d < SC.levels.length - 1; d++) { const lv = SC.levels[d]; const sib = k % 2 ? lv[k - 1] : (lv[k + 1] || ZERO); path.push({ side: k % 2 ? 'L' : 'R', h: sib.h, s: sib.s }); k = Math.floor(k / 2); }
+    return { nonce, cents: part, path }; });
+  return { wallet: addr, salt: w.scSalt, cents: fragments.reduce((t, x) => t + x.cents, 0), fragments, root: SC.root, total: SC.total, ts: SC.ts };
+}
+function soundView() { const res = CHAIN.ok ? CHAIN.treasuryUsdg : null; const tot = SC.total / 100; return { root: SC.root, total: tot, leaves: SC.leaves, ts: SC.ts, reserve: res, block: CHAIN.block, treasury: TREASURY, coverage: res != null && tot > 0 ? res / tot : null, history: SC.history.slice(0, 12).map((x) => ({ root: x.root.slice(0, 10) + '…' + x.root.slice(-6), total: x.total / 100, leaves: x.leaves, ts: x.ts, reserve: x.reserve })) }; }
+setInterval(buildSoundCheck, 60e3); setTimeout(buildSoundCheck, 3e3);
+
 // ---------- views ----------
 const num = (v, hi) => { let n = +v; if (!isFinite(n) || n <= 0) return 0; return hi != null ? Math.min(n, hi) : n; };
 function metrics() {
@@ -284,7 +327,7 @@ function metrics() {
     cr: db.cr, collateralUsd: db.collateralUsd, backingRatio: backing,
     mutePrice: SEEN_PX() ? MUTE_LIVE.px : null, muteSupply: MUTE_SUPPLY || null, muteMarketCap: SEEN_PX() && MUTE_SUPPLY ? MUTE_LIVE.px * MUTE_SUPPLY : null, muteLiquidity: SEEN_PX() ? MUTE_LIVE.liq : null, minLiq: MIN_LIQ,
     minDeposit: MIN_DEPOSIT, chain: { ok: CHAIN.ok, block: CHAIN.block, treasuryUsdg: CHAIN.treasuryUsdg, treasuryMute: CHAIN.treasuryMute, lastRead: CHAIN.lastRead, usdg: USDG.addr, rpc: RPCS[0] },
-    deposits: { usdg: db.treasuryIn.usdg, n: db.treasuryIn.n }, dark: { markets: Object.keys(DARK_FEED).map((sym) => ({ sym, px: TAPE[sym] ? TAPE[sym].px : null, ts: TAPE[sym] ? TAPE[sym].ts : null, fresh: tapeFresh(sym) })), open: db.dark.open, opened: db.dark.opened, closed: db.dark.closed, volume: db.dark.volume, fees: db.dark.fees, liqs: db.dark.liqs, fee: DARK.fee, maxPos: DARK.maxPos, maxOi: DARK.maxOi, full: db.dark.oi >= DARK.maxOi }, bonds: (() => { const B = bondDay(); return { discount: BOND.discount, vestDays: BOND.vestMs / 864e5, capUsd: BOND.capUsd, leftToday: Math.max(0, BOND.capUsd - B.dayUsd), soldUsd: B.soldUsd, soldMute: B.soldMute, n: B.n, price: LIVE_PX() ? bondPrice() : null, market: LIVE_PX() ? db.mutePrice : null, end: BOND.end, open: Date.now() <= BOND.end && LIVE_PX(), waitingForMute: !LIVE_PX(), min: BOND.min, freezer: { discount: BOND.lockDiscount, lockDays: BOND.lockMs / 864e5, apy: BOND.lockApy, price: LIVE_PX() ? freezerPrice() : null, lockedMute: db.freezer.lockedMute, usd: db.freezer.usd, n: db.freezer.n, yieldMute: db.freezer.yieldMute } }; })(), punch: { cut: PUNCH_CUT, guests: db.punch.guests, paid: db.punch.paid, board: referrers() }, notes: { created: Object.keys(db.links).length, open: Object.values(db.links).filter((L) => !L.claimed).length, claimed: Object.values(db.links).filter((L) => L.claimed).length }, queue: { open: db.queue.filter((q) => q.status === 'queued').length, openUsd: db.queue.filter((q) => q.status === 'queued').reduce((a, q) => a + q.amt, 0), paid: db.queue.filter((q) => q.status === 'paid').length },
+    deposits: { usdg: db.treasuryIn.usdg, n: db.treasuryIn.n }, dark: { markets: Object.keys(DARK_FEED).map((sym) => ({ sym, px: TAPE[sym] ? TAPE[sym].px : null, ts: TAPE[sym] ? TAPE[sym].ts : null, fresh: tapeFresh(sym) })), open: db.dark.open, opened: db.dark.opened, closed: db.dark.closed, volume: db.dark.volume, fees: db.dark.fees, liqs: db.dark.liqs, fee: DARK.fee, maxPos: DARK.maxPos, maxOi: DARK.maxOi, full: db.dark.oi >= DARK.maxOi }, bonds: (() => { const B = bondDay(); return { discount: BOND.discount, vestDays: BOND.vestMs / 864e5, capUsd: BOND.capUsd, leftToday: Math.max(0, BOND.capUsd - B.dayUsd), soldUsd: B.soldUsd, soldMute: B.soldMute, n: B.n, price: LIVE_PX() ? bondPrice() : null, market: LIVE_PX() ? db.mutePrice : null, end: BOND.end, open: Date.now() <= BOND.end && LIVE_PX() && muteFree() > 0, waitingForMute: !LIVE_PX(), muteAvailable: Math.max(0, muteFree()), min: BOND.min, freezer: { discount: BOND.lockDiscount, lockDays: BOND.lockMs / 864e5, apy: BOND.lockApy, price: LIVE_PX() ? freezerPrice() : null, lockedMute: db.freezer.lockedMute, usd: db.freezer.usd, n: db.freezer.n, yieldMute: db.freezer.yieldMute } }; })(), punch: { cut: PUNCH_CUT, guests: db.punch.guests, paid: db.punch.paid, board: referrers() }, notes: { created: Object.keys(db.links).length, open: Object.values(db.links).filter((L) => !L.claimed).length, claimed: Object.values(db.links).filter((L) => L.claimed).length }, queue: { open: db.queue.filter((q) => q.status === 'queued').length, openUsd: db.queue.filter((q) => q.status === 'queued').reduce((a, q) => a + q.amt, 0), paid: db.queue.filter((q) => q.status === 'paid').length },
     happy: { ...HAPPY, apy: happyApy(Date.now()), baseApy: HAPPY.apy, boost: { apy: HAPPY_BOOST.apy, end: HAPPY_BOOST.end, live: Date.now() < HAPPY_BOOST.end, endsIn: Math.max(0, HAPPY_BOOST.end - Date.now()) }, live: happyLive(Date.now()), staked: db.happy.staked, stakers: db.happy.stakers, paidMute: db.happy.paidMute, paidUsd: db.happy.paidUsd, poolLeft: Math.max(0, HAPPY.pool - db.happy.paidMute), poolLeftUsd: Math.max(0, HAPPY.pool - db.happy.paidMute) * db.mutePrice, endsIn: Math.max(0, HAPPY.end - Date.now()), startsIn: Math.max(0, HAPPY.start - Date.now()) },
     shred: { svcUsd: shred.svcUsd, burnedMute: shred.burnedMute, burnedUsd: shred.burnedUsd, epochs: shred.epochs, minUsd: SHRED_MIN_USD, bps: { shield: 30, send: 30, unshield: 30, redeem: 50 }, burns: shred.burns.slice(0, 8).map((b) => ({ id: b.id.slice(0, 8) + '…' + b.id.slice(-4), usd: b.usd, mute: b.mute, px: b.px, ts: b.ts, epoch: b.epoch })) },
     quiet: quietView(),
@@ -304,6 +347,7 @@ http.createServer(async (req, res) => {
   const u = req.url.split('?')[0];
   if (u === '/api/config') return json(res, 200, { stable: STABLE, gov: GOV, mint: MUTE_MINT, treasury: TREASURY, network: 'robinhood', chainId: 4663, explorer: 'https://explorer.mainnet.chain.robinhood.com', muteLive: MUTE_LIVE.px ? MUTE_LIVE : null });
   if (u === '/api/metrics') return json(res, 200, metrics());
+  if (u === '/api/soundcheck') return json(res, 200, soundView());
   if (u === '/api/session') { const w = (new URL(req.url, 'http://x').searchParams.get('wallet') || '').toLowerCase(); if (!isWallet(w)) return json(res, 200, { error: 'bad wallet' }); const exp = Date.now() + 7 * 864e5; return json(res, 200, { exp, message: sessionMsg(w, exp) }); }
   if (req.method === 'POST') {
     const d = await body(req);
@@ -313,6 +357,7 @@ http.createServer(async (req, res) => {
     if (!isWallet(d.wallet || '')) return json(res, 200, { error: 'connect a wallet first' });
     if (!['/api/admin/queue', '/api/admin/paid', '/api/dev/faucet', '/api/deposit'].includes(u)) { try { requireSess(d.wallet.toLowerCase(), d.auth); } catch (e) { return json(res, 200, { error: String(e), auth: true }); } }
     const w = W(d.wallet);
+    if (u === '/api/soundcheck/proof') { const p = soundProof(d.wallet.toLowerCase()); return json(res, 200, p ? { ok: true, ...p } : { error: SC.ts ? 'your balance enters the next tree (rebuilt every minute)' : 'first tree is being built' }); }
 
     if (u === '/api/mint') { // collateral + MUTE -> mUSD
       const m = num(d.amount); if (!m) return json(res, 200, { error: 'enter an amount' });
@@ -330,6 +375,7 @@ http.createServer(async (req, res) => {
       const x = num(d.amount, w.usdg); if (!x) return json(res, 200, { error: 'not enough USDG — deposit first' }); if (x < BOND.min) return json(res, 200, { error: 'minimum bond is ' + BOND.min + ' USDG' });
       const B = bondDay(); if (B.dayUsd + x > BOND.capUsd) return json(res, 200, { error: 'today\'s bond capacity is spent — ' + (BOND.capUsd - B.dayUsd).toFixed(2) + ' USDG left' });
       const lock = !!d.lock; const price = lock ? freezerPrice() : bondPrice(); const mute = x / price;
+      const owe = mute * (1 + (lock ? BOND.lockApy * BOND.lockMs / 31536000000 : 0)); if (owe > muteFree()) return json(res, 200, { error: 'bond capacity is set by $MUTE held in the treasury: ' + Math.max(0, muteFree()).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $MUTE available right now' });
       w.usdg -= x; db.collateralUsd += x; B.dayUsd += x; B.soldUsd += x; B.soldMute += mute; B.n++; if (lock) { db.freezer.lockedMute += mute; db.freezer.usd += x; db.freezer.n++; }
       w.bonds = w.bonds || []; w.bonds.push({ id: base58(randomBytes(6)), usd: x, mute, price, ts: now, claimed: 0, lock }); hist(w, { type: lock ? 'freezer' : 'bond', amt: x }); save();
       return json(res, 200, { ok: true, bonded: x, muteOut: mute, price, market: db.mutePrice, lock, unlockAt: lock ? now + BOND.lockMs : now + BOND.vestMs, apy: lock ? BOND.lockApy : 0, ...account(d.wallet) });
@@ -357,7 +403,7 @@ http.createServer(async (req, res) => {
     }
     if (u === '/api/claim') { const now = Date.now(); accrue(w, now); const usd = w.stakeAcc || 0; if (usd < 0.01) return json(res, 200, { error: 'nothing to claim yet' });
       if (!LIVE_PX()) return json(res, 200, { error: 'rewards are paid in $MUTE once it trades. They keep accruing until then' });
-      const px = Math.max(0.000001, db.mutePrice); let mute = usd / px; const left = HAPPY.pool - db.happy.paidMute; if (left <= 0) return json(res, 200, { error: 'the pool is spent — happy hour is over' }); if (mute > left) mute = left;
+      const px = Math.max(0.000001, db.mutePrice); let mute = usd / px; const left = HAPPY.pool - db.happy.paidMute; if (left <= 0) return json(res, 200, { error: 'the pool is spent — happy hour is over' }); if (mute > left) mute = left; if (mute > muteFree()) return json(res, 200, { error: 'Window rewards pay out as the treasury funds the $MUTE pool. Yours keep accruing' });
       w.stakeAcc = 0; w.mute += mute; db.happy.paidMute += mute; db.happy.paidUsd += mute * px; save();
       return json(res, 200, { ok: true, claimedMute: mute, claimedUsd: mute * px, ...account(d.wallet) });
     }

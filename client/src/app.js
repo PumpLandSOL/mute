@@ -87,7 +87,29 @@ function needWallet() { if (!wallet) { connectPhantom(); return true; } return f
 $('cta-demo').onclick = () => $('demo').scrollIntoView({ behavior: 'smooth' });
 
 // ---------- metrics ----------
-async function loadMetrics() { M = await api('/api/metrics'); renderMetrics(); }
+async function loadMetrics() { M = await api('/api/metrics'); renderMetrics(); loadSound(); }
+// ---------- Sound Check: proof of reserves, verified in this browser ----------
+let SCV = null;
+async function loadSound() { try { SCV = await api('/api/soundcheck'); } catch (e) { return; } if (!SCV || SCV.error) return;
+  $('sc-res').textContent = SCV.reserve != null ? '$' + fmt(SCV.reserve, 2) : '—'; $('sc-tot').textContent = '$' + fmt(SCV.total, 2);
+  $('sc-cov').textContent = SCV.coverage != null ? fmt(SCV.coverage * 100, 1) + '%' : (SCV.total > 0 ? '—' : 'no balances yet'); $('sc-n').textContent = fmt(SCV.leaves, 0);
+  $('sc-ts').textContent = SCV.ts ? ago(SCV.ts) : '—'; $('sc-blk').textContent = SCV.block ? '#' + fmt(SCV.block, 0) : '—'; $('sc-root').textContent = SCV.root;
+  $('sc-ex').href = (M && M.explorer ? M.explorer : 'https://explorer.mainnet.chain.robinhood.com') + '/address/' + SCV.treasury; }
+const sha = async (str) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+$('sc-verify').onclick = async () => {
+  if (needWallet()) return; const r = await api('/api/soundcheck/proof', { wallet }); if (r.error) return toast(r.error, true);
+  const rows = []; let good = true, sum = 0;
+  for (const [n, fr] of r.fragments.entries()) {
+    let cur = { h: await sha('leaf|' + r.wallet + '|' + r.salt + '|' + fr.nonce + '|' + fr.cents), s: fr.cents }; sum += fr.cents;
+    for (const p of fr.path) { const L = p.side === 'L' ? p : cur, R = p.side === 'L' ? cur : p; cur = { h: await sha('node|' + L.h + '|' + R.h + '|' + (L.s + R.s)), s: L.s + R.s }; }
+    const ok = cur.h === r.root && cur.s === r.total; good = good && ok;
+    rows.push('<div class="r"><span class="ty shield">fragment ' + (n + 1) + '</span><span class="sg">' + fr.path.length + ' hashes up to the root · ' + cur.h.slice(0, 14) + '…</span><span class="am" style="color:' + (ok ? 'var(--a)' : 'var(--red)') + '">' + (ok ? '✓' : '✕') + '</span></div>');
+  }
+  good = good && sum === r.cents;
+  rows.unshift('<div class="r"><span class="ty">balance</span><span class="sg">your balance $' + fmt(r.cents / 100, 2) + ', split into ' + r.fragments.length + ' fragments</span><span class="am">' + (sum === r.cents ? 'adds up' : 'mismatch') + '</span></div>');
+  rows.push('<div class="r"><span class="ty ' + (good ? 'burn' : '') + '">root</span><span class="sg">' + r.root.slice(0, 16) + '… · total $' + fmt(r.total / 100, 2) + '</span><span class="am" style="color:' + (good ? 'var(--a)' : 'var(--red)') + '">' + (good ? 'VERIFIED' : 'MISMATCH') + '</span></div>');
+  $('sc-out').innerHTML = rows.join(''); toast(good ? 'verified in your browser: your balance is inside the published total' : 'proof did not match the root', !good);
+};
 function renderMetrics() {
   if (!M) return;
   const pegEl = $('s-peg'); pegEl.textContent = '$' + fmt(M.musdPrice, 4); pegEl.className = 'v peg ' + M.pegStatus;
@@ -182,7 +204,7 @@ function renderPanel() {
   } else if (tab === 'bond') {
     const Bd = M && M.bonds, me = A && A.bonds;
     const F = Bd && Bd.freezer; if (typeof window.__lock === 'undefined') window.__lock = true; const L = window.__lock;
-    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && Bd.waitingForMute ? 'Opens once the $MUTE pool is deep enough.' : Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
+    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && Bd.waitingForMute ? 'Opens once the $MUTE pool is deep enough.' : Bd && !Bd.open && Bd.muteAvailable <= 0 && Date.now() <= Bd.end ? 'Capacity comes from $MUTE held by the treasury.' : Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
       <div style="display:flex;gap:8px;margin:0 0 12px"><button class="btn ${L ? 'fill' : 'ghost'}" id="lk1" style="flex:1.3">CRYO · lock ${F ? F.lockDays * 24 : 48}h · −${F ? fmt(F.discount * 100, 0) : 30}% · ${F ? fmt(F.apy * 100, 0) : 80}% APY</button><button class="btn ${L ? 'ghost' : 'fill'}" id="lk0" style="flex:1">Standard bond · −${Bd ? fmt(Bd.discount * 100, 0) : 20}% · ${Bd ? Bd.vestDays : 5}d vest</button></div>
       ${L ? `<div class="note" style="border-color:var(--gold)">Cryo: ${F ? fmt(F.discount * 100, 0) : 30}% off, locked ${F ? F.lockDays * 24 : 48}h, earning ${F ? fmt(F.apy * 100, 0) : 80}% APY.</div>` : ''}
       <div class="field"><input id="in" type="number" placeholder="50.00 minimum" min="50"><span class="u">USDG</span><span class="mx" id="mx">MAX</span></div>

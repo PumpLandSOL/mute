@@ -61,13 +61,13 @@ const MOCK = `(() => {
     ok('unknown chain was added (4902 path)', st.calls.includes('wallet_addEthereumChain'));
     ok('session signed in wallet', st.auth && st.calls.includes('personal_sign'));
     const acc = async () => post('/api/account', { wallet: ME.toLowerCase(), auth: JSON.parse(await js(`return localStorage.getItem('mute_auth_${ME.toLowerCase()}')`)) });
-    const act = async (t, setup, btn = 'act') => { await js(`await tab('${t}');${setup};$('${btn}').click();await sl(700);`); const toast = await js(`return $('toast').textContent+'|'+$('toast').className`); return toast; };
+    const act = async (t, setup, btn = 'act') => { await js(`await tab('${t}');${setup};$('${btn}').click();await sl(1500);`); const toast = await js(`return $('toast').textContent+'|'+$('toast').className`); return toast; };
     let t;
     t = await act('mint', `set(1000)`); let a = await acc(); ok('mint via UI', a.musd === 1000, t);
     t = await act('shield', `set(600)`); a = await acc(); ok('mute via UI', a.priv > 595 && a.priv < 600.01, t + ' priv=' + a.priv);
     t = await act('send', `$('to').value='${OTHER}';set(50)`); a = await acc(); ok('muted send via UI', a.priv < 550 && !/err/.test(t), t);
     t = await act('send', `set(25);$('memo').value='hi'`, 'act2'); const link = await js(`return (document.querySelector('.linkbox code')||{}).textContent||''`); ok('drop link via UI', /#claim=/.test(link), t);
-    t = await act('bond', `set(100)`); a = await acc(); ok('bond waits for a real $MUTE price', a.bonds.list.length === 0 && /bonds open once/.test(t), t);
+    t = await act('bond', `set(100)`); a = await acc(); const bdis = await js(`return $('act').disabled`); ok('bonds cannot sell $MUTE the treasury lacks', a.bonds.list.length === 0 && (bdis || /bonds open once|capacity is set/.test(t)), bdis ? 'button disabled' : t);
     t = await act('happy', `set(200)`); a = await acc(); ok('Window stake via UI', a.happy.staked === 200, t);
     t = await act('dark', `set(100)`); a = await acc(); ok('Blind Desk open via UI (needs live tape)', a.dark.length === 1 || /tape|closed|market/i.test(t), t);
     t = await act('redeem', `set(100)`); a = await acc(); ok('redeem via UI', a.musd < 700 && !/err/.test(t), t);
@@ -75,6 +75,8 @@ const MOCK = `(() => {
     t = await act('deposit', `set(60)`); const tx = await js(`return window.__tx`); ok('deposit sends USDG transfer to treasury on RH', tx && tx.data.startsWith('0xa9059cbb') && tx.data.includes('580aa9df627a396f32ae649ec427a4cb430a5ed2'), t);
     await js(`$('b-priv-eye') && $('b-priv-eye').click();`); await sleep(400);
     const shown = await js(`return document.body.innerText.includes('${(await acc()).priv.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}')`); ok('reveal shows the signed private balance', shown);
+    await js(`document.querySelector('#nav [data-ch=proof]').click();`); await sleep(1500); await js(`$('sc-verify').click();`); await sleep(2500);
+    const sc = await js(`return $('sc-out').innerText`); ok('Sound Check verifies in the browser', /VERIFIED/.test(sc) && /adds up/.test(sc), sc.trim().slice(-60));
     const errs = await js(`return window.__errs||[]`); ok('no page errors', !errs.length, JSON.stringify(errs));
   } catch (e) { console.error(e); fail++; } finally { if (c) c.close(); srv.kill(); signer.close(); }
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

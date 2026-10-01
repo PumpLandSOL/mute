@@ -76,7 +76,7 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--edge);font-si
   <div class="grp">Privacy</div>
   <a href="#mute">Mute &amp; unmute</a><a href="#send">Muted sends</a><a href="#drops">Drops</a><a href="#mirror">Mirror</a><a href="#signal">Signal</a>
   <div class="grp">Earn &amp; trade</div>
-  <a href="#silent">Silent Yield &amp; Amplifier</a><a href="#desk">Blind Desk</a><a href="#bonds">Bonds &amp; Cryo</a><a href="#window">The Window</a><a href="#relays">Relays</a>
+  <a href="#soundcheck">Sound Check</a><a href="#silent">Silent Yield &amp; Amplifier</a><a href="#desk">Blind Desk</a><a href="#bonds">Bonds &amp; Cryo</a><a href="#window">The Window</a><a href="#relays">Relays</a>
   <div class="grp">$MUTE</div>
   <a href="#token">Token</a><a href="#erase">Erase</a><a href="#fees">Fees</a>
   <div class="grp">Reference</div>
@@ -175,6 +175,20 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--edge);font-si
 <section id="signal">
   <h2><i>10</i>Signal</h2>
   <p>The Signal channel is the public ledger feed: everything an outside observer can see. Visible mints, redeems and Erase receipts appear with amounts. Muted activity appears only as nullifiers and commitments. Signal is the proof that the footprint is what this page says it is.</p>
+</section>
+
+<section id="soundcheck">
+  <h2><i>✓</i>Sound Check</h2>
+  <p>A live proof of reserves that keeps balances private.</p>
+  <ul>
+    <li><b>Liabilities:</b> each wallet's USD balance (USDG, visible and muted mUSD, Window stake, Blind Desk marks, queued withdrawals) is split into 4 random fragments. All fragments are shuffled into a Merkle-sum tree, rebuilt every minute.</li>
+    <li><b>Published:</b> only the root hash, the total and the number of balances.</li>
+    <li><b>Reserve:</b> USDG held by the treasury, read on-chain, with coverage = reserve ÷ liabilities.</li>
+    <li><b>Verify:</b> your browser recomputes every fragment's path to the root with SHA-256 and checks the fragments add up to your balance. Siblings in a path are random pieces of unknown balances.</li>
+  </ul>
+  <pre>leaf = sha256("leaf|" + wallet + "|" + salt + "|" + nonce + "|" + cents)
+node = sha256("node|" + left + "|" + right + "|" + (sumL + sumR))</pre>
+  <p>Public endpoint: <code>GET /api/soundcheck</code>. Your proof: <code>POST /api/soundcheck/proof</code> with your signed session.</p>
 </section>
 
 <section id="silent">

@@ -19,6 +19,7 @@ const SIZES = {
   'mute-howitworks': [2400, 1350],
   'mute-features': [2400, 1350],
   'mute-ledger': [2400, 1350],
+  'mute-vs': [2400, 1350],
 };
 
 const only = process.argv[2];

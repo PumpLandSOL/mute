@@ -208,6 +208,7 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
     </nav>
     <div class="rfoot">
       <div class="chain">Robinhood Chain</div>
+      <a href="/docs">Docs</a>
       <a id="xbtn" href="https://x.com/MuteMoneyRH" target="_blank" rel="noopener">𝕏 · @MuteMoneyRH</a>
       <button class="btn fill sm" id="connect">Connect</button>
     </div>
@@ -399,7 +400,8 @@ h2{font-family:'Michroma';font-weight:400;font-size:clamp(20px,2.4vw,30px);line-
 
 <div class="modal" id="wmodal"><div class="mcard">
   <h3>Open vault</h3>
-  <p>No EVM wallet detected. Paste a Robinhood Chain address to open your vault, or install MetaMask or Rabby to connect directly.</p>
+  <p id="wmsg">No EVM wallet detected. Install MetaMask or Rabby to connect, or paste an address to view a vault (read-only).</p>
+  <div id="wlist" style="margin:14px 0 10px"></div>
   <div class="field"><input id="waddr" placeholder="0x… Robinhood Chain address" spellcheck="false"></div>
   <button class="btn fill wide" id="wsave">Connect</button>
 </div></div>

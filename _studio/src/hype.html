@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>body{width:1280px;height:720px}.c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring{position:absolute;left:50%;top:50%;border:1.5px solid #ffffff55;border-radius:50%;transform:translate(-50%,-50%)}
+#rows{position:absolute;left:140px;right:140px;top:90px;font-size:26px;line-height:54px;color:#c4d4c8;font-weight:400}
+#rows div{display:flex;justify-content:space-between;border-bottom:1px solid #ffffff14;white-space:nowrap}
+#rows span{display:inline-block}
+.big{font-size:150px;line-height:1}.w{font-size:96px}
+#mark{position:absolute;left:520px;top:150px;width:240px;height:240px}
+#glow{position:absolute;left:540px;top:170px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,#19d81f,transparent 68%);filter:blur(30px)}
+#wave path{fill:none;stroke:#ecf6ee;stroke-width:2.6;stroke-linecap:round}
+</style><body><div class="amb" id="amb"></div><div class="scan"></div>
+<div class="c" id="s1"><div class="ring" id="r1"></div><div class="ring" id="r2"></div><div class="ring" id="r3"></div><div class="mi" style="font-size:44px;line-height:1.4;position:relative">Every transfer<br>makes noise.</div></div>
+<div id="rows"></div>
+<div class="c" id="s3"><div class="mi big iri">Mute it.</div></div>
+<div class="c" id="s4"><div class="mi w" id="word"></div></div>
+<div id="s5" class="abs" style="inset:0"><div id="glow"></div>
+<svg id="mark" viewBox="0 0 40 40"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs>
+<path d="M6 15h7l8-7v24l-8-7H6z" fill="#ecf6ee"/>
+<g id="wave"><path id="w1" d="M26 15q3 5 0 10"/><path id="w2" d="M30 12q5 8 0 16"/></g>
+<path id="x1" d="M27 14l8 12" stroke="url(#lg)" stroke-width="3.6" stroke-linecap="round" fill="none" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+<path id="x2" d="M35 14l-8 12" stroke="url(#lg)" stroke-width="3.6" stroke-linecap="round" fill="none" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
+<div class="abs mi" id="tag" style="left:0;right:0;top:450px;text-align:center;font-size:34px;letter-spacing:.06em">Dollars with the <span class="iri">sound off.</span></div>
+<div class="abs" id="dom" style="left:0;right:0;top:520px;text-align:center;font-size:21px;letter-spacing:.2em;color:#a9bcae">MUTE · mUSD · mutemoneyrh.xyz</div></div>
+<script>
+const $=(i)=>document.getElementById(i),cl=(x)=>Math.max(0,Math.min(1,x)),e=(x)=>1-Math.pow(1-cl(x),3),win=(t,a,b,f=.25)=>cl((t-a)/f)*cl((b-t)/f);
+const R=[];let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;const h4=()=>Array.from({length:4},()=>Math.floor(rnd()*16).toString(16)).join('');const hx=()=>'0x'+h4()+'…'+h4();
+for(let i=0;i<10;i++){R.push([hx(),hx(),'$'+(Math.floor(rnd()*90000)+400).toLocaleString('en-US')]);}
+$('rows').innerHTML=R.map((r)=>`<div><span>${r[0]}  →  ${r[1]}</span><span>${r[2]}</span></div>`).join('');
+const W=['MINT','MUTE','SEND','DROP','MIRROR','BLIND DESK','SILENT YIELD','ERASE'];
+window.__seek=(t)=>{
+  $('amb').style.transform=`rotate(${t*4}deg) scale(${1+t*.02})`;
+  $('s1').style.opacity=win(t,0,1.7);['r1','r2','r3'].forEach((id,k)=>{const p=cl((t-k*.35)/1.5);const d=120+p*1100;$(id).style.width=$(id).style.height=d+'px';$(id).style.opacity=(1-p)*.8;});
+  $('rows').style.opacity=win(t,1.6,3.4);$('rows').style.transform=`translateY(${-(t-1.6)*26}px)`;
+  [...$('rows').children].forEach((d,i)=>{const p=cl((t-2.3-i*.06)/.5);[...d.children].forEach((s)=>{s.style.filter=`blur(${p*13}px)`;s.style.color=p>.5?'transparent':'';s.style.background=p>.5?'linear-gradient(100deg,#00c805,#19d81f,#7dff8a)':'';s.style.borderRadius='6px';});});
+  $('s3').style.opacity=win(t,3.3,5,.2);$('s3').firstElementChild.style.transform=`scale(${.86+e((t-3.3)/1.7)*.16})`;$('s3').firstElementChild.style.filter=`blur(${(1-e((t-3.3)/.5))*24}px)`;
+  const k=Math.floor((t-5)/.32);$('s4').style.opacity=(t>=5&&t<7.56)?1:0;if(k>=0&&k<W.length){$('word').textContent=W[k];const f=((t-5)%.32)/.32;$('word').style.filter=`blur(${(1-e(f*3))*18}px)`;$('word').className='mi w'+(k%2?' iri':'');}
+  $('s5').style.opacity=e((t-7.5)/.4);$('mark').style.transform=`scale(${.8+e((t-7.5)/.8)*.2})`;
+  const wv=1-e((t-8.2)/.5);['w1','w2'].forEach((id,i)=>{$(id).style.opacity=wv*(0.6+0.4*Math.sin(t*14-i));});
+  $('x1').style.strokeDashoffset=1-e((t-8.3)/.3);$('x2').style.strokeDashoffset=1-e((t-8.5)/.3);
+  $('glow').style.opacity=e((t-8.5)/.6)*(.7+Math.sin(t*3)*.1);
+  $('tag').style.opacity=e((t-8.7)/.6);$('dom').style.opacity=e((t-9.1)/.5);
+};window.__seek(0);
+</script>

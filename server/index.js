@@ -74,6 +74,20 @@ function shredBurn(now) {
 }
 let saveT = null; function save() { if (saveT) return; saveT = setTimeout(() => { saveT = null; try { fs.writeFileSync(DATA_PATH, JSON.stringify(db)); } catch (e) {} }, 800); }
 const isWallet = (s) => /^0x[a-fA-F0-9]{40}$/.test(s);
+// ---------- signed vault sessions ----------
+// Every action that moves value must carry a personal_sign session from the wallet that owns the vault.
+const { recoverPersonal } = require('./evmsig');
+const SESSIONS = new Map();
+const sessionMsg = (w, exp) => ['MUTE vault session', 'Wallet: ' + w, 'Expires: ' + exp, 'No gas. No transaction.'].join('\n');
+function sessOk(w, auth) { try { requireSess(w, auth); return true; } catch (e) { return false; } }
+function requireSess(w, auth) {
+  if (!auth || !auth.sig || !auth.exp) throw 'sign in with your wallet first';
+  const exp = +auth.exp; if (!(exp > Date.now())) throw 'session expired, sign in again'; if (exp > Date.now() + 8 * 864e5) throw 'bad session';
+  const key = w + ':' + exp + ':' + auth.sig; if (SESSIONS.get(key)) return true;
+  let who; try { who = recoverPersonal(sessionMsg(w, exp), auth.sig); } catch (e) { throw 'bad signature'; }
+  if (who !== w) throw 'signature is not from this wallet';
+  if (SESSIONS.size > 5000) SESSIONS.clear(); SESSIONS.set(key, 1); return true;
+}
 function W(a) { a = a.toLowerCase(); return db.wallets[a] || (db.wallets[a] = { usdg: SEED.usdg, mute: SEED.mute, musd: SEED.musd, priv: SEED.priv, seeded: true }); }
 
 // ---------- chain: real USDG deposits to TREASURY, verified on-chain ----------
@@ -271,7 +285,7 @@ function account(addr) { const w = W(addr); const now = Date.now(); return { wal
 
 // ---------- http ----------
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
-function serve(req, res) { let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/client/index.html'; if (u === '/view') u = '/client/view.html'; const f = path.normalize(path.join(ROOT, u)); if (!f.startsWith(ROOT)) { res.writeHead(403); return res.end('no'); } fs.readFile(f, (e, b) => { if (e) { res.writeHead(404); return res.end('not found'); } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); res.end(b); }); }
+function serve(req, res) { let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/client/index.html'; if (u === '/view') u = '/client/view.html'; if (u === '/docs' || u === '/docs/') u = '/client/docs.html'; const f = path.normalize(path.join(ROOT, u)); if (!f.startsWith(ROOT)) { res.writeHead(403); return res.end('no'); } fs.readFile(f, (e, b) => { if (e) { res.writeHead(404); return res.end('not found'); } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); res.end(b); }); }
 function json(res, c, o) { res.writeHead(c, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); }
 function body(req) { return new Promise((r) => { let b = ''; req.on('data', (c) => { b += c; if (b.length > 1e4) req.destroy(); }); req.on('end', () => { try { r(JSON.parse(b || '{}')); } catch (e) { r({}); } }); }); }
 
@@ -279,12 +293,14 @@ http.createServer(async (req, res) => {
   const u = req.url.split('?')[0];
   if (u === '/api/config') return json(res, 200, { stable: STABLE, gov: GOV, mint: MUTE_MINT, treasury: TREASURY, network: 'robinhood', chainId: 4663, explorer: 'https://explorer.mainnet.chain.robinhood.com', muteLive: MUTE_LIVE.px ? MUTE_LIVE : null });
   if (u === '/api/metrics') return json(res, 200, metrics());
+  if (u === '/api/session') { const w = (new URL(req.url, 'http://x').searchParams.get('wallet') || '').toLowerCase(); if (!isWallet(w)) return json(res, 200, { error: 'bad wallet' }); const exp = Date.now() + 7 * 864e5; return json(res, 200, { exp, message: sessionMsg(w, exp) }); }
   if (req.method === 'POST') {
     const d = await body(req);
     if (u === '/api/note/peek') { const L = db.links[linkId(String(d.secret || ''))]; if (!L) return json(res, 200, { error: 'no such note' }); return json(res, 200, { amt: L.amt, memo: L.memo, claimed: L.claimed, ts: L.ts }); }
     if (u === '/api/view') { const addr = walletOfViewKey(String(d.key || '')); if (!addr) return json(res, 200, { error: 'invalid view key' }); const v = W(addr); return json(res, 200, { ok: true, wallet: addr, priv: v.priv, staked: v.stake || 0, hist: (v.hist || []).slice(0, 100), notesOpen: Object.values(db.links).filter((L) => !L.claimed).length, root: sh.root, t: Date.now() }); }
-    if (u === '/api/account') { if (!isWallet(d.wallet || '')) return json(res, 200, { error: 'paste a valid Robinhood Chain address' }); const aw = W(d.wallet); if (d.ref) { const fresh = !(aw.deposited || 0) && !(aw.hist || []).length; if (fresh && bind(aw, d.wallet.toLowerCase(), d.ref)) save(); } return json(res, 200, account(d.wallet)); }
+    if (u === '/api/account') { if (!isWallet(d.wallet || '')) return json(res, 200, { error: 'paste a valid Robinhood Chain address' }); const aw = W(d.wallet); if (d.ref) { const fresh = !(aw.deposited || 0) && !(aw.hist || []).length; if (fresh && bind(aw, d.wallet.toLowerCase(), d.ref)) save(); } const acc = account(d.wallet); if (!sessOk(d.wallet.toLowerCase(), d.auth)) { acc.priv = null; acc.quietEarned = null; acc.dark = []; acc.locked = true; } return json(res, 200, acc); }
     if (!isWallet(d.wallet || '')) return json(res, 200, { error: 'connect a wallet first' });
+    if (!['/api/admin/queue', '/api/admin/paid', '/api/dev/faucet', '/api/deposit'].includes(u)) { try { requireSess(d.wallet.toLowerCase(), d.auth); } catch (e) { return json(res, 200, { error: String(e), auth: true }); } }
     const w = W(d.wallet);
 
     if (u === '/api/mint') { // collateral + MUTE -> mUSD

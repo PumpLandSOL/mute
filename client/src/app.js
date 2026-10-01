@@ -1,6 +1,13 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const api = (u, b) => fetch(u, b ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) } : undefined).then((r) => r.json());
+const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json());
+async function api(u, b) {
+  if (!b) return fetch(u).then((r) => r.json());
+  const withAuth = () => (b.wallet && typeof wallet !== 'undefined' && b.wallet === wallet ? Object.assign({}, b, { auth: getAuth() }) : b);
+  let r = await post(u, withAuth());
+  if (r && r.auth && u !== '/api/account') { const ok = await signIn(); if (ok) r = await post(u, withAuth()); }
+  return r;
+}
 const fmt = (n, d = 2) => (n == null || !isFinite(n)) ? '—' : (+n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 const big = (n) => Math.abs(n) >= 1e6 ? fmt(n / 1e6, 2) + 'M' : Math.abs(n) >= 1e3 ? fmt(n / 1e3, 1) + 'K' : fmt(n, 0);
 const ago = (ts) => { const s = Math.max(0, (Date.now() - ts) / 1000); return s < 60 ? Math.floor(s) + 's ago' : Math.floor(s / 60) + 'm ago'; };
@@ -13,28 +20,68 @@ let refParam = ''; try { const q = new URLSearchParams(location.search); if (/^0
 
 function setConnected() { const b = $('connect'); b.textContent = wallet ? wallet.slice(0, 4) + '…' + wallet.slice(-4) : 'Connect'; }
 const CHAIN_HEX = '0x1237';
-const evm = () => window.ethereum || null;
-async function ensureChain(eth) { try { await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] }); } catch (e) { if (e && e.code === 4902) { try { await eth.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CHAIN_HEX, chainName: 'Robinhood Chain', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'], blockExplorerUrls: ['https://explorer.mainnet.chain.robinhood.com'] }] }); } catch (e2) {} } } }
-async function connectPhantom() {                                // EVM wallet on Robinhood Chain (name kept for the call sites)
-  const eth = evm();
-  if (!eth) { $('wmodal').classList.add('on'); return; }          // fallback: paste an address
+const errMsg = (e) => { const m = (e && (e.data && e.data.message || e.message)) || String(e || ''); if (e && e.code === 4001 || /reject|denied|cancel/i.test(m)) return 'request rejected in wallet'; return m.replace(/^Error:\s*/, '').slice(0, 140) || 'wallet error'; };
+// EIP-6963: list every injected wallet instead of trusting whichever one grabbed window.ethereum
+const WALLETS = [];
+addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d && d.provider && !WALLETS.some((x) => x.info.uuid === d.info.uuid)) WALLETS.push(d); });
+dispatchEvent(new Event('eip6963:requestProvider'));
+let ETH = null;
+const evm = () => { if (ETH) return ETH; const rd = localStorage.getItem('mute_rdns'); const m = rd && WALLETS.find((x) => x.info.rdns === rd); return m ? (ETH = m.provider) : (window.ethereum || null); };
+async function ensureChain(eth) {
+  const cur = async () => String(await eth.request({ method: 'eth_chainId' })).toLowerCase();
+  if (await cur() === CHAIN_HEX) return;
+  try { await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] }); }
+  catch (e) {
+    if (e && (e.code === 4902 || (e.data && e.data.originalError && e.data.originalError.code === 4902) || /unrecognized|not added|unknown chain/i.test(e.message || ''))) {
+      await eth.request({ method: 'wallet_addEthereumChain', params: [{ chainId: CHAIN_HEX, chainName: 'Robinhood Chain', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'], blockExplorerUrls: ['https://explorer.mainnet.chain.robinhood.com'] }] });
+    } else throw e;
+  }
+  if (await cur() !== CHAIN_HEX) throw new Error('switch your wallet to Robinhood Chain (4663). This wallet may not support it: use MetaMask or Rabby');
+}
+// signed session: one free signature proves you own the vault. Nothing moves without it.
+const AKEY = () => 'mute_auth_' + wallet;
+function getAuth() { try { const a = JSON.parse(localStorage.getItem(AKEY()) || 'null'); return a && a.exp > Date.now() + 6e4 ? a : null; } catch (e) { return null; } }
+async function signIn() {
+  if (!wallet) return false; if (getAuth()) return true;
+  const eth = evm(); if (!eth) { toast('connect a wallet to sign in (a pasted address is view-only)', true); return false; }
+  try {
+    const m = await (await fetch('/api/session?wallet=' + wallet)).json(); if (m.error) throw new Error(m.error);
+    toast('sign the message in your wallet to unlock your vault (free, no transaction)');
+    const sig = await eth.request({ method: 'personal_sign', params: [m.message, wallet] });
+    localStorage.setItem(AKEY(), JSON.stringify({ sig, exp: m.exp })); return true;
+  } catch (e) { toast(errMsg(e), true); return false; }
+}
+async function useWallet(eth, rdns) {
+  ETH = eth; if (rdns) localStorage.setItem('mute_rdns', rdns); $('wmodal').classList.remove('on');
   try {
     const acc = await eth.request({ method: 'eth_requestAccounts' });
-    if (!acc || !acc.length) throw new Error('no account');
+    if (!acc || !acc.length) throw new Error('no account returned by the wallet');
     await ensureChain(eth);
-    const pk = acc[0].toLowerCase();
-    wallet = pk; localStorage.setItem('mute_w', pk); setConnected(); toast('wallet connected · Robinhood Chain'); await loadAccount();
-  } catch (e) { toast('connection cancelled', true); }
+    wallet = acc[0].toLowerCase(); localStorage.setItem('mute_w', wallet); setConnected();
+    if (eth.on && !eth._muteBound) { eth._muteBound = 1; eth.on('accountsChanged', (a) => { if (a && a.length) { wallet = a[0].toLowerCase(); localStorage.setItem('mute_w', wallet); setConnected(); loadAccount(); } }); eth.on('chainChanged', (c) => { if (String(c).toLowerCase() !== CHAIN_HEX) toast('wallet left Robinhood Chain, switch back to use MUTE', true); }); }
+    await signIn(); toast('wallet connected · Robinhood Chain'); await loadAccount();
+  } catch (e) { toast(errMsg(e), true); }
 }
-if (window.ethereum && window.ethereum.on) window.ethereum.on('accountsChanged', (acc) => { if (acc && acc.length) { wallet = acc[0].toLowerCase(); localStorage.setItem('mute_w', wallet); setConnected(); loadAccount(); } });
+async function connectPhantom() {                                // name kept for the call sites
+  dispatchEvent(new Event('eip6963:requestProvider')); await new Promise((r) => setTimeout(r, 120));
+  const list = WALLETS.filter((x) => x.provider);
+  if (list.length > 1) {                                          // several wallets installed: let the user pick
+    $('wlist').innerHTML = list.map((x, i) => '<button class="btn wide wpick" data-i="' + i + '" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;justify-content:flex-start">' + (x.info.icon ? '<img src="' + x.info.icon + '" width="22" height="22" alt="">' : '') + x.info.name.replace(/[<>]/g, '') + '</button>').join('');
+    $('wlist').querySelectorAll('.wpick').forEach((b) => b.onclick = () => { const x = list[+b.dataset.i]; useWallet(x.provider, x.info.rdns); });
+    $('wmsg').textContent = 'Choose a wallet. MetaMask and Rabby support Robinhood Chain.'; $('wmodal').classList.add('on'); return;
+  }
+  const eth = list.length ? list[0].provider : window.ethereum;
+  if (!eth) { $('wlist').innerHTML = ''; $('wmsg').textContent = 'No EVM wallet detected. Install MetaMask or Rabby to connect, or paste an address to view a vault (read-only).'; $('wmodal').classList.add('on'); return; }
+  return useWallet(eth, list.length ? list[0].info.rdns : '');
+}
 $('connect').onclick = async () => {
   if (wallet) {                                                   // already connected -> disconnect
-    wallet = ''; localStorage.removeItem('mute_w'); A = null; setConnected(); renderAccount(); toast('disconnected'); return;
+    localStorage.removeItem(AKEY()); wallet = ''; localStorage.removeItem('mute_w'); A = null; setConnected(); renderAccount(); toast('disconnected'); return;
   }
   await connectPhantom();
 };
 $('wmodal').onclick = (e) => { if (e.target.id === 'wmodal') $('wmodal').classList.remove('on'); };
-$('wsave').onclick = async () => { const v = $('waddr').value.trim(); if (!/^0x[a-fA-F0-9]{40}$/.test(v)) return toast('invalid address', true); wallet = v.toLowerCase(); localStorage.setItem('mute_w', v); setConnected(); $('wmodal').classList.remove('on'); toast('vault opened'); await loadAccount(); };
+$('wsave').onclick = async () => { const v = $('waddr').value.trim(); if (!/^0x[a-fA-F0-9]{40}$/.test(v)) return toast('invalid address', true); wallet = v.toLowerCase(); localStorage.setItem('mute_w', v); setConnected(); $('wmodal').classList.remove('on'); toast('vault opened read-only. Connect a wallet to act'); await loadAccount(); };
 function needWallet() { if (!wallet) { connectPhantom(); return true; } return false; }
 $('cta-demo').onclick = () => $('demo').scrollIntoView({ behavior: 'smooth' });
 
@@ -227,7 +274,7 @@ async function sendUsdg(amount) {
     toast('sent · waiting for the receipt…');
     for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 3000)); const r = await api('/api/deposit', { wallet, tx }); if (r.ok) { A = r; renderAccount(); loadMetrics(); return toast(`credited ${fmt(r.amt, 2)} USDG`); } if (r.error && !/pending|not found/.test(r.error)) return toast(r.error, true); }
     toast('still pending — paste the hash to credit later', true);
-  } catch (e) { toast('transaction cancelled', true); }
+  } catch (e) { toast(errMsg(e), true); }
 }
 async function doAct(url, payload, msg) {
   if (needWallet()) return;

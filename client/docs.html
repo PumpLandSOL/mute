@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUTE Docs — dollars with the sound off.</title>
+<meta name="description" content="MUTE documentation: how mUSD, muting, Drops, Mirror, Blind Desk, Bonds, Cryo, the Window, Silent Yield, Erase and Relays work on Robinhood Chain.">
+<meta property="og:url" content="https://mutemoneyrh.xyz/docs"><link rel="canonical" href="https://mutemoneyrh.xyz/docs"><meta property="og:title" content="MUTE Docs"><meta property="og:description" content="How mUSD works: private dollars on Robinhood Chain."><meta property="og:image" content="https://mutemoneyrh.xyz/brand/mute-banner.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23050705'/%3E%3Cpath d='M6 15h7l8-7v24l-8-7H6z' fill='%23ecf6ee'/%3E%3Cpath d='M27 14l8 12M35 14l-8 12' stroke='%2300c805' stroke-width='3.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--void:#050705;--hull:#0a0f0c;--hull2:#0f1611;--edge:#1b2920;--edge2:#25382b;--ink:#ecf6ee;--dim:#a9bcae;--mut:#6f8577;--a:#00c805;--b:#19d81f;--c:#7dff8a;--iri:linear-gradient(100deg,var(--a),var(--b) 50%,var(--c))}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-padding-top:84px}
+body{font-family:'Sora',sans-serif;font-weight:300;background:var(--void);color:var(--ink);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--c);text-decoration:none}a:hover{text-decoration:underline}
+.amb{position:fixed;inset:-20%;z-index:-2;filter:blur(110px);opacity:.22;background:radial-gradient(38% 34% at 22% 30%,var(--b),transparent 70%),radial-gradient(30% 30% at 78% 22%,var(--a),transparent 70%),radial-gradient(34% 36% at 62% 84%,var(--c),transparent 70%)}
+.scan{position:fixed;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,#ffffff05 0 1px,transparent 1px 4px)}
+.iri{background:var(--iri);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mi{font-family:'Michroma',sans-serif;text-transform:uppercase;letter-spacing:.14em;font-weight:400}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:16px clamp(16px,4vw,40px);border-bottom:1px solid var(--edge);background:#050705d9;backdrop-filter:blur(18px)}
+header .logo{display:flex;align-items:center;gap:12px;color:var(--ink)}header .logo:hover{text-decoration:none}
+header svg{width:28px;height:28px}header b{font-family:'Michroma';font-weight:400;font-size:16px;letter-spacing:.34em}
+header .sep{color:var(--mut);font-size:11px;letter-spacing:.3em;font-family:'Michroma'}
+header nav{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{font-family:'Sora';font-weight:500;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;border:none;background:var(--hull2);color:var(--ink);padding:10px 16px;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);box-shadow:inset 0 0 0 1px var(--edge2)}
+.btn:hover{text-decoration:none;background:#16211a}.btn.fill{background:var(--iri);color:#06100a;font-weight:600;box-shadow:none}
+.wrap{display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;max-width:1180px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+aside{position:sticky;top:70px;align-self:start;max-height:calc(100vh - 70px);overflow:auto;padding:36px 0 30px;scrollbar-width:none}
+aside .grp{font-family:'Michroma';font-size:9.5px;letter-spacing:.28em;color:var(--mut);text-transform:uppercase;margin:20px 0 8px}aside .grp:first-child{margin-top:0}
+aside a{display:block;color:var(--dim);font-size:13.5px;padding:5px 0 5px 14px;border-left:1px solid var(--edge);transition:.15s}
+aside a:hover{color:var(--ink);text-decoration:none;border-color:var(--edge2)}
+aside a.on{color:var(--ink);border-image:var(--iri) 1;border-left-width:2px;padding-left:13px}
+main{padding:48px 0 120px;min-width:0;max-width:760px}
+.kick{font-family:'Michroma';font-size:10px;letter-spacing:.3em;color:var(--mut);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.kick::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--edge2),transparent)}
+h1{font-family:'Michroma';font-weight:400;font-size:clamp(28px,4.4vw,46px);line-height:1.2;text-transform:uppercase}
+.lead{font-size:17px;color:var(--dim);margin-top:18px;line-height:1.75}.lead b{color:var(--ink);font-weight:500}
+section{padding-top:56px}
+h2{font-family:'Michroma';font-weight:400;font-size:clamp(19px,2.3vw,25px);line-height:1.3;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:baseline;gap:14px}
+h2 i{font-style:normal;font-size:11px;color:var(--a);letter-spacing:.2em}
+h3{font-weight:500;font-size:16px;margin:26px 0 6px}
+p,li{color:var(--dim)}p{margin-top:12px}p b,li b{color:var(--ink);font-weight:500}
+ul,ol{margin:12px 0 0 20px}li{margin-top:6px}li::marker{color:var(--a)}
+code{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--c);background:#00c80512;padding:1px 6px;border-radius:4px;word-break:break-all}
+pre{margin-top:14px;background:var(--hull);border:1px solid var(--edge);padding:16px 18px;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.7;color:var(--dim);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+pre b{color:var(--c);font-weight:400}
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px}
+th{text-align:left;font-weight:500;color:var(--mut);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;padding:10px 12px 10px 0;border-bottom:1px solid var(--edge2)}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--edge);color:var(--dim);vertical-align:top}td:first-child{color:var(--ink);font-weight:400;white-space:nowrap}
+.tw{overflow-x:auto}
+.call{margin-top:18px;padding:16px 18px;border-left:2px solid;border-image:var(--iri) 1;background:linear-gradient(100deg,#00c8050d,transparent 70%);color:var(--dim)}.call b{color:var(--ink);font-weight:500}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--edge);margin-top:20px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.flow div{background:var(--hull);padding:18px}.flow .n{font-family:'Michroma';font-size:11px;color:var(--a)}.flow .t{font-weight:500;margin-top:6px}.flow p{font-size:13.5px;margin-top:6px}
+.addr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:#ffffff08}
+.addr span{font-family:'Michroma';font-size:9.5px;letter-spacing:.16em;color:var(--mut);min-width:96px}
+.addr button{margin-left:auto;font-family:'Sora';font-size:10px;letter-spacing:.12em;text-transform:uppercase;border:none;box-shadow:inset 0 0 0 1px var(--edge2);background:none;color:var(--ink);padding:5px 9px;cursor:pointer}
+.addr button:hover{background:#ffffff12}
+footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--edge);font-size:12.5px;color:var(--mut);display:flex;gap:18px;flex-wrap:wrap}
+#menu{display:none}
+@media(max-width:900px){.wrap{grid-template-columns:1fr;gap:0}aside{display:none;position:fixed;top:61px;left:0;right:0;bottom:0;max-height:none;background:#050705f2;backdrop-filter:blur(16px);padding:24px 20px;z-index:9}aside.open{display:block}#menu{display:inline-block}header .sep,header .hx{display:none}.flow{grid-template-columns:1fr}main{padding-top:32px}}
+</style>
+</head>
+<body>
+<div class="amb"></div><div class="scan"></div>
+<header>
+  <a class="logo" href="/"><svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#00c805"/><stop offset="1" stop-color="#7dff8a"/></linearGradient></defs><path d="M6 15h7l8-7v24l-8-7H6z" fill="#ecf6ee"/><path d="M27 14l8 12M35 14l-8 12" stroke="url(#lg)" stroke-width="3.6" stroke-linecap="round"/></svg><b>MUTE</b></a>
+  <span class="sep">DOCS</span>
+  <nav><button class="btn" id="menu">Contents</button><a class="btn hx" href="https://x.com/MuteMoneyRH" target="_blank" rel="noopener">𝕏</a><a class="btn fill" href="/">Open app</a></nav>
+</header>
+<div class="wrap">
+<aside id="toc">
+  <div class="grp">Start</div>
+  <a href="#intro">Introduction</a><a href="#quick">Quickstart</a><a href="#concepts">Core concepts</a>
+  <div class="grp">The dollar</div>
+  <a href="#musd">mUSD &amp; the peg</a><a href="#deposit">Deposits &amp; withdrawals</a><a href="#mint">Mint &amp; redeem</a>
+  <div class="grp">Privacy</div>
+  <a href="#mute">Mute &amp; unmute</a><a href="#send">Muted sends</a><a href="#drops">Drops</a><a href="#mirror">Mirror</a><a href="#signal">Signal</a>
+  <div class="grp">Earn &amp; trade</div>
+  <a href="#silent">Silent Yield</a><a href="#desk">Blind Desk</a><a href="#bonds">Bonds &amp; Cryo</a><a href="#window">The Window</a><a href="#relays">Relays</a>
+  <div class="grp">$MUTE</div>
+  <a href="#token">Token</a><a href="#erase">Erase</a><a href="#fees">Fees</a>
+  <div class="grp">Reference</div>
+  <a href="#params">Parameters</a><a href="#contracts">Addresses</a><a href="#api">API</a><a href="#risk">Risk</a><a href="#roadmap">Roadmap</a>
+</aside>
+<main>
+<section id="intro" style="padding-top:0">
+  <div class="kick">MUTE · documentation</div>
+  <h1>Dollars with the <span class="iri">sound off.</span></h1>
+  <p class="lead"><b>mUSD</b> is a dollar on Robinhood Chain that you can mute. Mint it against USDG, mute it, and the <b>amount and both parties never reach the ledger</b>. Observers see that something moved. They never see who, to whom, or how much. <b>$MUTE</b> is the share token that absorbs every fee.</p>
+  <div class="flow">
+    <div><div class="n">01</div><div class="t">Mint</div><p>USDG in. Most becomes collateral, the rest buys $MUTE and erases it.</p></div>
+    <div><div class="n">02</div><div class="t">Mute</div><p>Your mUSD becomes a note encrypted only to you.</p></div>
+    <div><div class="n">03</div><div class="t">Send</div><p>One nullifier, one commitment. No amount, no names.</p></div>
+  </div>
+</section>
+
+<section id="quick">
+  <h2><i>01</i>Quickstart</h2>
+  <ol>
+    <li><b>Connect.</b> Open <a href="/">mutemoneyrh.xyz</a> and press <b>Connect</b>. MetaMask, Rabby or any EVM wallet works; the site adds and switches to Robinhood Chain (chainId 4663) for you.</li>
+    <li><b>Deposit USDG.</b> In the vault, open <b>Deposit</b>, enter an amount (minimum 50 USDG) and confirm the transfer in your wallet. Your vault is credited once the server has read the receipt on-chain.</li>
+    <li><b>Mint mUSD.</b> Open <b>Mint</b> and convert USDG into $1-pegged mUSD.</li>
+    <li><b>Mute it.</b> Open <b>Mute</b>. Your muted balance shows as frosted glass to everyone but you, and starts earning Silent Yield immediately.</li>
+    <li><b>Send or Drop.</b> Open <b>Send</b> to pay any address muted, or create a Drop link to pay someone who has not connected yet.</li>
+  </ol>
+  <div class="call"><b>Tip.</b> Press <b>reveal</b> next to your muted balance to read it on your own screen. Press <b>mirror</b> to generate a read-only view key for an accountant or partner.</div>
+</section>
+
+<section id="concepts">
+  <h2><i>02</i>Core concepts</h2>
+  <div class="tw"><table>
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>Visible balance</td><td>mUSD held in the open. Readable on the Signal feed like any normal stablecoin.</td></tr>
+    <tr><td>Muted balance</td><td>mUSD held as private notes. Only your key can read the amount.</td></tr>
+    <tr><td>Note</td><td>A record of value encrypted to its owner with x25519. Holds amount and memo.</td></tr>
+    <tr><td>Commitment</td><td>A hash added to the Merkle tree when a note is created. Reveals nothing about the note.</td></tr>
+    <tr><td>Nullifier</td><td>A unique tag published when a note is spent, so it can never be spent twice. Unlinkable to the commitment.</td></tr>
+    <tr><td>View key</td><td>An HMAC credential that lets a page read your muted history. It cannot spend.</td></tr>
+    <tr><td>Collateral ratio</td><td>The share of each mUSD backed by hard USDG collateral. Published live on the Overview.</td></tr>
+  </table></div>
+</section>
+
+<section id="musd">
+  <h2><i>03</i>mUSD &amp; the peg</h2>
+  <p>mUSD is a <b>fractional-algorithmic stablecoin</b>. Each unit is minted from USDG: most of it is held as collateral, and the remaining algorithmic share buys $MUTE at market and erases it from supply.</p>
+  <ul>
+    <li><b>Below $1:</b> the collateral ratio rises, so more USDG backs each new mUSD and redeeming pays out more hard collateral.</li>
+    <li><b>Above $1:</b> the ratio falls and more of each mint is the algorithmic share.</li>
+    <li><b>Redemption is always open,</b> so arbitrage pulls the price back to $1 from either side.</li>
+  </ul>
+  <p>The mUSD price, collateral ratio, reserve, total supply and the muted share of supply are shown live on the Overview channel.</p>
+</section>
+
+<section id="deposit">
+  <h2><i>04</i>Deposits &amp; withdrawals</h2>
+  <h3>Deposit</h3>
+  <p>A deposit is a <b>real USDG transfer on Robinhood Chain</b> from your wallet to the MUTE treasury. After you sign, the site posts the transaction hash to the server, which reads the receipt over RPC and checks that the USDG <code>Transfer</code> log runs from your connected wallet to the treasury for at least <b>50 USDG</b>. Only then is your vault credited. A transaction hash can be credited once.</p>
+  <h3>Withdraw</h3>
+  <p>Redeem mUSD back to USDG in your vault, then press <b>Withdraw</b>. The request enters a queue that the treasury pays from a cold wallet, usually within 24 hours, and the payout transaction hash is written next to your request. There is <b>deliberately no hot key on the server</b>, so nothing on the web host can move funds.</p>
+</section>
+
+<section id="mint">
+  <h2><i>05</i>Mint &amp; redeem</h2>
+  <p><b>Mint</b> converts USDG in your vault into mUSD at $1. The collateral portion goes into the reserve; the algorithmic portion buys $MUTE and erases it.</p>
+  <p><b>Redeem</b> burns visible mUSD and returns USDG collateral plus the $MUTE share at the current ratio. Redeem pays 50 bps. To redeem muted mUSD, unmute it first.</p>
+</section>
+
+<section id="mute">
+  <h2><i>06</i>Mute &amp; unmute</h2>
+  <p><b>Mute</b> moves mUSD from your visible balance into the shielded pool. The protocol writes a note encrypted only to you and adds its commitment to the Merkle tree. Nothing else is recorded, so your balance is unreadable to everyone but you.</p>
+  <p><b>Unmute</b> spends a note (publishing its nullifier) and returns the value to your visible balance. You can do it at any time and keep any Silent Yield you earned. Both directions pay 30 bps.</p>
+</section>
+
+<section id="send">
+  <h2><i>07</i>Muted sends</h2>
+  <p>A muted send spends your note and creates a new note encrypted to the recipient. The public footprint is exactly <b>one nullifier spent and one commitment added</b>: no amount, no sender, no recipient. The recipient decrypts their note with their own key. A send pays 30 bps and can carry a private memo that only the recipient can read.</p>
+</section>
+
+<section id="drops">
+  <h2><i>08</i>Drops</h2>
+  <p>A Drop is a <b>pay link</b>. You lock muted mUSD behind a random secret and share the link by text, DM or QR. Whoever opens it connects a wallet and the mUSD lands in their muted balance.</p>
+  <ul>
+    <li>The secret lives only in the link's <code>#fragment</code>, which browsers never send to a server. The server stores a hash of it.</li>
+    <li>On the ledger a claim is one nullifier and one commitment, identical to any muted send.</li>
+    <li>One claim per Drop. Claiming a Drop also binds the claimer to you as a Relay (see <a href="#relays">Relays</a>).</li>
+  </ul>
+  <p>Create one from the <b>Send</b> tab in the vault.</p>
+</section>
+
+<section id="mirror">
+  <h2><i>09</i>Mirror</h2>
+  <p>A Mirror is a <b>view key</b>: an HMAC over your address with a server salt, encoded together with your address so the mirror page at <code>/view</code> (the key travels in the link fragment) can verify it. Whoever holds it can read your muted balance and history. It has <b>no spending power</b>. This is the selective-disclosure model privacy coins use for audits: you choose who sees, and only they see. Generate one with <b>mirror</b> next to your muted balance.</p>
+</section>
+
+<section id="signal">
+  <h2><i>10</i>Signal</h2>
+  <p>The Signal channel is the public ledger feed: everything an outside observer can see. Visible mints, redeems and Erase receipts appear with amounts. Muted activity appears only as nullifiers and commitments. Signal is the proof that the footprint is what this page says it is.</p>
+</section>
+
+<section id="silent">
+  <h2><i>11</i>Silent Yield</h2>
+  <p><b>40% of every protocol fee is paid to muted mUSD holders.</b> Each time anyone mutes, sends, unmutes, redeems or trades on the Blind Desk, 40% of the fee is split pro-rata across every muted balance and credited as mUSD inside the mute, in the same instant.</p>
+  <ul>
+    <li>No staking, no lock, no claim button. Mute and your balance grows with usage.</li>
+    <li>Paid from fees that are already collateral-backed mUSD, so <b>nothing is printed</b>.</li>
+    <li>No pool to run dry and no end date: it is funded by usage.</li>
+  </ul>
+  <pre>your_share = fee × (1 − relay_cut) × <b>0.40</b> × (your_muted / total_muted)</pre>
+  <p>The Silent Yield channel shows the running 24h APR (computed from real fees), total paid, wallets earning, and what you have earned.</p>
+</section>
+
+<section id="desk">
+  <h2><i>12</i>Blind Desk</h2>
+  <p>Private exposure to tokenized stocks. Commit muted mUSD to a <b>long or short at 1x</b> in HOOD, TSLA, NVDA, SPY and others, priced off the live exchange tape. Ticker, size, side and P&amp;L all stay muted; the ledger records one nullifier and one commitment.</p>
+  <ul>
+    <li>30 bps to open and 30 bps to close; fees feed Silent Yield and Erase.</li>
+    <li>Max <b>1,000 mUSD</b> per position and <b>25,000 mUSD</b> open interest protocol-wide.</li>
+    <li>Orders fill only while the tape is fresh (updated within 15 minutes). Shorts stop out at a 95% loss.</li>
+    <li>The protocol is the counterparty. On close, P&amp;L settles back into your muted balance.</li>
+  </ul>
+</section>
+
+<section id="bonds">
+  <h2><i>13</i>Bonds &amp; Cryo</h2>
+  <h3>Bonds</h3>
+  <p>Deposit USDG and receive $MUTE at <b>20% below market</b>, vesting linearly over <b>5 days</b>, claimable as it vests and withdrawable to your wallet. Your USDG goes into the mUSD reserve and <b>mints nothing</b>, so every bond pushes the collateral ratio up. Capacity is <b>5,000 USDG per day</b>, first come first served; minimum 50 USDG.</p>
+  <h3>Cryo</h3>
+  <p>A locked bond: $MUTE at <b>30% below market</b>, held for <b>48 hours</b> instead of vesting. While locked it earns <b>80% APY</b> in $MUTE, paid from the Window's fixed pool. At release you claim principal plus yield in one click.</p>
+  <p>Bonds and Cryo close together with the Window.</p>
+</section>
+
+<section id="window">
+  <h2><i>14</i>The Window</h2>
+  <p>A limited staking period. Stake mUSD and earn a fixed APY (currently <b>40%</b>) paid in $MUTE from a pool the treasury set aside in advance (<b>5,000,000 MUTE</b>), up to <b>250,000 mUSD</b> staked protocol-wide. The Window closes on <b>25 October 2026, 00:00 UTC</b> or when the pool runs out, whichever comes first.</p>
+  <div class="call"><b>Why it ends.</b> Permanent subsidised yield is what turned Anchor into the only reason to hold UST. A yield with an end date can never become the thing holding up the peg. The permanent yield in MUTE is Silent Yield, which is paid from fees.</div>
+</section>
+
+<section id="relays">
+  <h2><i>15</i>Relays</h2>
+  <p>Anyone who claims your Drop, or connects through your relay link for the first time, is bound to you:</p>
+  <pre>https://mutemoneyrh.xyz/?ref=<b>0xYourAddress</b></pre>
+  <p>From then on <b>20% of every fee they pay</b> (mute, send, unmute, redeem) is credited to your visible mUSD, every time. One relay per wallet, set once, never changed. The Relays channel shows wallets you brought in and what you have earned; the leaderboard masks addresses.</p>
+</section>
+
+<section id="token">
+  <h2><i>16</i>$MUTE</h2>
+  <p>$MUTE is the share token on Robinhood Chain. It is bought and erased by every mint's algorithmic share and by every Erase cycle; it is what Bonds, Cryo and the Window pay out; and holders govern the protocol parameters. Demand for private dollars flows into $MUTE.</p>
+  <p>The contract address is shown on the Overview with a copy button once $MUTE is live, and the market price is read from DexScreener.</p>
+</section>
+
+<section id="erase">
+  <h2><i>17</i>Erase</h2>
+  <p>The buyback. After the Relay cut and Silent Yield, the rest of every fee collects in USDG. Each cycle the protocol buys $MUTE at market and removes it from supply, publishing an Erase receipt on the Signal feed. The receipt is public. The payer never is.</p>
+</section>
+
+<section id="fees">
+  <h2><i>18</i>Fees</h2>
+  <div class="tw"><table>
+    <tr><th>Action</th><th>Fee</th></tr>
+    <tr><td>Mute</td><td>30 bps</td></tr>
+    <tr><td>Muted send / Drop</td><td>30 bps</td></tr>
+    <tr><td>Unmute</td><td>30 bps</td></tr>
+    <tr><td>Redeem</td><td>50 bps</td></tr>
+    <tr><td>Blind Desk</td><td>30 bps open + 30 bps close</td></tr>
+    <tr><td>Deposit, mint, bond</td><td>none (mint's algorithmic share buys and erases $MUTE)</td></tr>
+  </table></div>
+  <h3>Where a fee goes</h3>
+  <pre>fee
+ ├─ <b>20%</b>  → the payer's Relay (if any), as visible mUSD
+ └─ rest
+     ├─ <b>40%</b>  → Silent Yield, pro-rata to muted holders
+     └─ <b>60%</b>  → Erase: buy $MUTE at market, remove from supply</pre>
+</section>
+
+<section id="params">
+  <h2><i>19</i>Parameters</h2>
+  <div class="tw"><table>
+    <tr><th>Parameter</th><th>Value</th></tr>
+    <tr><td>Chain</td><td>Robinhood Chain · chainId 4663</td></tr>
+    <tr><td>Collateral asset</td><td>USDG (6 decimals)</td></tr>
+    <tr><td>Minimum deposit</td><td>50 USDG</td></tr>
+    <tr><td>Silent Yield share</td><td>40% of fees after Relay cut</td></tr>
+    <tr><td>Relay share</td><td>20% of fees, forever</td></tr>
+    <tr><td>Bond discount / vest</td><td>20% / 5 days linear</td></tr>
+    <tr><td>Bond capacity</td><td>5,000 USDG per day</td></tr>
+    <tr><td>Cryo discount / lock / APY</td><td>30% / 48 hours / 80%</td></tr>
+    <tr><td>Window APY / pool / cap</td><td>40% / 5,000,000 MUTE / 250,000 mUSD</td></tr>
+    <tr><td>Window, Bonds close</td><td>2026-10-25 00:00 UTC</td></tr>
+    <tr><td>Blind Desk limits</td><td>1x · 1,000 mUSD per position · 25,000 mUSD OI</td></tr>
+    <tr><td>Withdrawals</td><td>queued, paid from cold wallet, usually &lt; 24h</td></tr>
+  </table></div>
+</section>
+
+<section id="contracts">
+  <h2><i>20</i>Addresses</h2>
+  <div class="addr"><span>TREASURY</span><code id="a-tre">0x580Aa9df627A396F32aE649EC427a4Cb430a5eD2</code><button data-c="a-tre">Copy</button></div>
+  <div class="addr"><span>USDG</span><code id="a-usdg">0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168</code><button data-c="a-usdg">Copy</button></div>
+  <div class="addr"><span>$MUTE</span><code id="a-mute">announced at launch</code><button data-c="a-mute">Copy</button></div>
+  <div class="addr"><span>RPC</span><code id="a-rpc">https://rpc.mainnet.chain.robinhood.com</code><button data-c="a-rpc">Copy</button></div>
+  <div class="addr"><span>EXPLORER</span><code><a href="https://explorer.mainnet.chain.robinhood.com" target="_blank" rel="noopener">explorer.mainnet.chain.robinhood.com</a></code></div>
+  <p>Every deposited dollar sits at the treasury address above; open it on the explorer at any time.</p>
+</section>
+
+<section id="api">
+  <h2><i>21</i>API</h2>
+  <p>The public read endpoints return JSON and need no key.</p>
+  <div class="tw"><table>
+    <tr><th>Endpoint</th><th>Returns</th></tr>
+    <tr><td><code>GET /api/config</code></td><td>Chain id, explorer, treasury, USDG and $MUTE addresses, live $MUTE price.</td></tr>
+    <tr><td><code>GET /api/metrics</code></td><td>Peg, collateral ratio, reserve, supply, muted share, Signal feed, Silent Yield, Erase, Window, Bonds and Blind Desk stats.</td></tr>
+    <tr><td><code>POST /api/account</code></td><td>Body <code>{"wallet":"0x…"}</code>. Visible balances, positions, bonds, stakes and relay stats.</td></tr>
+    <tr><td><code>GET /view#&lt;key&gt;</code></td><td>Mirror page for a view key.</td></tr>
+  </table></div>
+  <pre>curl https://mutemoneyrh.xyz/api/metrics</pre>
+</section>
+
+<section id="risk">
+  <h2><i>22</i>Risk</h2>
+  <ul>
+    <li><b>Peg.</b> A peg is a mechanism. The collateral ratio is published live and redemption is always open.</li>
+    <li><b>Yield.</b> The Window and Cryo have fixed pools and end dates. Silent Yield moves with protocol usage.</li>
+    <li><b>Blind Desk.</b> 1x exposure to equities can lose value; exposure is capped per wallet and protocol-wide.</li>
+    <li><b>Custody.</b> Withdrawals are paid from a cold wallet; no key on the server can move funds.</li>
+    <li><b>Keys.</b> Muted notes are encrypted to your keys alone. Keep your keys, and size your position sensibly.</li>
+  </ul>
+</section>
+
+<section id="roadmap">
+  <h2><i>23</i>Roadmap</h2>
+  <div class="tw"><table>
+    <tr><th>Phase</th><th>Scope</th><th>Status</th></tr>
+    <tr><td>P1 · Ledger &amp; $MUTE</td><td>Commitments, nullifiers, encrypted notes; on-chain verified USDG deposits; open mint and redeem.</td><td><span class="iri">Live</span></td></tr>
+    <tr><td>P2 · Drops, Mirror, Blind Desk</td><td>Pay links, view keys, muted stock positions, Bonds, Cryo, the Window, Silent Yield.</td><td><span class="iri">Live</span></td></tr>
+    <tr><td>P3 · mUSD contracts</td><td>Solidity mint and redeem against collateral, a signed 24/7 oracle, an mUSD pool.</td><td>Next</td></tr>
+    <tr><td>P4 · Peg automation</td><td>Algorithmic collateral-ratio control and keeper bots holding $1 through arbitrage.</td><td>Planned</td></tr>
+    <tr><td>P5 · ZK settlement</td><td>Muted transfers verified by on-chain zero-knowledge proofs, then professional audits.</td><td>Planned</td></tr>
+  </table></div>
+  <footer><span>MUTE · Robinhood Chain</span><a href="/">App</a><a href="https://x.com/MuteMoneyRH" target="_blank" rel="noopener">𝕏 @MuteMoneyRH</a><a href="#intro">Back to top</a></footer>
+</section>
+</main>
+</div>
+<script>
+fetch('/api/config').then((r)=>r.json()).then((c)=>{if(c.mint)document.getElementById('a-mute').textContent=c.mint;if(c.treasury)document.getElementById('a-tre').textContent=c.treasury;}).catch(()=>{});
+document.querySelectorAll('.addr button').forEach((b)=>b.onclick=()=>{const t=document.getElementById(b.dataset.c).textContent;navigator.clipboard&&navigator.clipboard.writeText(t);b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200);});
+const toc=document.getElementById('toc'),links=[...toc.querySelectorAll('a')];
+document.getElementById('menu').onclick=()=>toc.classList.toggle('open');
+links.forEach((a)=>a.addEventListener('click',()=>toc.classList.remove('open')));
+const secs=links.map((a)=>document.querySelector(a.getAttribute('href')));
+const spy=()=>{let k=0;secs.forEach((s,i)=>{if(s&&s.getBoundingClientRect().top<120)k=i;});links.forEach((a,i)=>a.classList.toggle('on',i===k));};
+addEventListener('scroll',spy,{passive:true});spy();
+</script>
+</body>
+</html>

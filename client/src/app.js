@@ -92,7 +92,7 @@ function renderMetrics() {
   if (!M) return;
   const pegEl = $('s-peg'); pegEl.textContent = '$' + fmt(M.musdPrice, 4); pegEl.className = 'v peg ' + M.pegStatus;
   $('s-cr').textContent = fmt(M.cr * 100, 1) + '%';
-  $('s-col').textContent = '$' + big(M.collateralUsd);
+  $('s-col').textContent = '$' + big(M.reserveOnchain != null ? M.reserveOnchain : M.collateralUsd);
   $('s-sup').textContent = big(M.musdSupply) + ' mUSD';
   $('s-shd').textContent = big(M.shielded.totalValue) + ' mUSD';
   if (M.mint) { $('cabar').style.display = 'flex'; $('ca-mint').textContent = M.mint; }
@@ -102,7 +102,7 @@ function renderMetrics() {
     $('dk-open').textContent = fmt(D.open, 0); $('dk-vol').textContent = '$' + big(D.volume); $('dk-fees').textContent = '$' + fmt(D.fees, 2);
   }
   if (M.bonds) { const Bd = M.bonds;
-    $('bd-price').textContent = '$' + px(Bd.price); $('bd-market').textContent = '$' + px(Bd.market); $('bd-left').textContent = '$' + fmt(Bd.leftToday, 0) + ' / $' + fmt(Bd.capUsd, 0); $('bd-sold').textContent = '$' + big(Bd.soldUsd); if (Bd.freezer) { $('fg-price').textContent = '$' + px(Bd.freezer.price); $('fg-locked').textContent = big(Bd.freezer.lockedMute) + ' MUTE'; }
+    $('bd-price').textContent = Bd.price ? '$' + px(Bd.price) : 'at launch'; $('bd-market').textContent = Bd.market ? '$' + px(Bd.market) : 'at launch'; $('bd-left').textContent = '$' + fmt(Bd.leftToday, 0) + ' / $' + fmt(Bd.capUsd, 0); $('bd-sold').textContent = '$' + big(Bd.soldUsd); if (Bd.freezer) { $('fg-price').textContent = Bd.freezer.price ? '$' + px(Bd.freezer.price) : 'at launch'; $('fg-locked').textContent = big(Bd.freezer.lockedMute) + ' MUTE'; }
   }
   if (M.happy) { const V = M.happy;
     $('v-apy').textContent = fmt(V.apy * 100, 0) + '%'; $('v-boost').textContent = V.boost && V.boost.live ? '⚡ boosted from ' + fmt(V.baseApy * 100, 0) + '% · ' + dur(V.boost.endsIn) + ' left' : ''; $('v-staked').textContent = big(V.staked) + ' / ' + big(V.cap);
@@ -152,7 +152,7 @@ let carbonKey = '', claimSecret = '', lastNote = null;
 // ---------- demo tabs ----------
 document.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.tab; document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b)); renderPanel(); });
 function renderPanel() {
-  const p = $('panel'); const cr = M ? M.cr : 0.9, vp = M ? M.mutePrice : 0.85;
+  const p = $('panel'); const cr = M ? M.cr : 1, vp = M && M.mutePrice ? M.mutePrice : 0;
   if (tab === 'seal') {
     const url = location.origin + '/view#' + carbonKey;
     p.innerHTML = `<div class="note"><b>Mirror.</b> This view key opens a read-only mirror of your muted balance and history. It <b>cannot spend</b>. Give it only to who you want to see.</div>
@@ -180,7 +180,7 @@ function renderPanel() {
   } else if (tab === 'bond') {
     const Bd = M && M.bonds, me = A && A.bonds;
     const F = Bd && Bd.freezer; if (typeof window.__lock === 'undefined') window.__lock = true; const L = window.__lock;
-    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
+    p.innerHTML = `<div class="note">$MUTE at ${Bd ? fmt(Bd.discount * 100, 0) : 20}% off, vesting ${Bd ? Bd.vestDays : 5} days. ${Bd && Bd.waitingForMute ? 'Opens once $MUTE trades.' : Bd && !Bd.open ? 'Bonds are closed.' : ''}</div>
       <div style="display:flex;gap:8px;margin:0 0 12px"><button class="btn ${L ? 'fill' : 'ghost'}" id="lk1" style="flex:1.3">CRYO · lock ${F ? F.lockDays * 24 : 48}h · −${F ? fmt(F.discount * 100, 0) : 30}% · ${F ? fmt(F.apy * 100, 0) : 80}% APY</button><button class="btn ${L ? 'ghost' : 'fill'}" id="lk0" style="flex:1">Standard bond · −${Bd ? fmt(Bd.discount * 100, 0) : 20}% · ${Bd ? Bd.vestDays : 5}d vest</button></div>
       ${L ? `<div class="note" style="border-color:var(--gold)">Cryo: ${F ? fmt(F.discount * 100, 0) : 30}% off, locked ${F ? F.lockDays * 24 : 48}h, earning ${F ? fmt(F.apy * 100, 0) : 80}% APY.</div>` : ''}
       <div class="field"><input id="in" type="number" placeholder="50.00 minimum" min="50"><span class="u">USDG</span><span class="mx" id="mx">MAX</span></div>

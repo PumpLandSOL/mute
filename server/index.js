@@ -38,6 +38,14 @@ if (!db.wallets) db.wallets = {};
 if (db.v !== 2) { db.wallets = {}; db.v = 2; }   // v2: real deposits only — the seeded paper ledger is wiped
 if (!db.shielded) db.shielded = { commitments: [], nullifiers: 0, notes: 0, totalValue: 0, txCount: 0, root: base58(sha('empty')), feed: [] };
 if (!db.shielded.feed) db.shielded.feed = [];
+if (db.v3 !== true) {   // v3: live numbers only — seeded supply, simulated pool activity and simulated burns are removed
+  const ws = Object.values(db.wallets || {});
+  db.musdSupply = ws.reduce((t, x) => t + (x.musd || 0) + (x.priv || 0) + (x.stake || 0), 0) + Object.values(ws).reduce((t, x) => t + ((x.dark || []).reduce((q, p) => q + (p.margin || p.amt || 0), 0)), 0);
+  db.collateralUsd = db.musdSupply; db.musdPrice = 1; db.cr = 1; db.mutePrice = 0; db.muteSupply = 0;
+  db.shielded = { commitments: [], nullifiers: 0, notes: 0, totalValue: ws.reduce((t, x) => t + (x.priv || 0), 0), txCount: 0, root: base58(sha('empty')), feed: [] };
+  db.shred = { svcUsd: 0, burnedMute: 0, burnedUsd: 0, epochs: 0, burns: [] };
+  db.v3 = true;
+}
 // ---------- THE SHRED: punch service charge -> MUTE buyback & burn ----------
 const SVC = { shield: 0.003, send: 0.003, unshield: 0.003, redeem: 0.005 }; // 30 / 30 / 30 / 50 bps
 const SHRED_MIN_USD = 25;
@@ -66,7 +74,7 @@ function bind(w, addr, refAddr) { refAddr = (refAddr || '').toLowerCase(); if (w
 const redact = (addr) => addr.slice(0, 4) + '████' + addr.slice(-4);
 function referrers() { return Object.entries(db.wallets).filter(([, x]) => (x.guests || 0) > 0).map(([addr, x]) => ({ who: redact(addr), guests: x.guests || 0, earned: x.earned || 0 })).sort((p, q) => q.guests - p.guests || q.earned - p.earned).slice(0, 10); }
 function shredBurn(now) {
-  if (shred.svcUsd < SHRED_MIN_USD) return;
+  if (shred.svcUsd < SHRED_MIN_USD || !LIVE_PX()) return;
   const usd = shred.svcUsd; const px = Math.max(0.0001, db.mutePrice); const mute = usd / px;
   db.muteSupply = Math.max(0, db.muteSupply - mute); shred.svcUsd = 0; shred.burnedMute += mute; shred.burnedUsd += usd; shred.epochs++;
   const id = base58(sha('shred|' + shred.epochs + '|' + usd.toFixed(6) + '|' + mute.toFixed(6) + '|' + now));
@@ -147,7 +155,7 @@ function accrue(u, now) {   // reward accrues in mUSD terms per second while hap
   if (t1 > t0 && happyLive(t0)) u.stakeAcc = (u.stakeAcc || 0) + u.stake * happyApy(t0) * (t1 - t0) / 31536000000;
   u.stakeT = now;
 }
-function happyView(u, now) { accrue(u, now); const px = Math.max(0.000001, db.mutePrice); return { staked: u.stake || 0, accruedUsd: u.stakeAcc || 0, accruedMute: (u.stakeAcc || 0) / px, since: u.stakeSince || null }; }
+function happyView(u, now) { accrue(u, now); const px = Math.max(0.000001, db.mutePrice); return { staked: u.stake || 0, accruedUsd: u.stakeAcc || 0, accruedMute: LIVE_PX() ? (u.stakeAcc || 0) / px : 0, since: u.stakeSince || null }; }
 
 // ---------- PHASE III: The Note (pay links) + The Carbon Copy (view keys) ----------
 //   The Note : lock shielded mUSD behind a secret; anyone holding the link claims it into their own shielded balance.
@@ -231,6 +239,11 @@ function shieldNote(amount, recipPub) { const bl = base58(randomBytes(8)); const
 
 // ---------- $MUTE price: Robinhood Chain pools (DexScreener) when MUTE_MINT is set ----------
 let MUTE_LIVE = { px: 0, liq: 0, pair: '', t: 0 };
+const LIVE_PX = () => MUTE_LIVE.px > 0 && Date.now() - MUTE_LIVE.t < 10 * 60e3;   // a real, recent $MUTE price
+const CR_TARGET = +(process.env.CR_TARGET || 0.9);
+let MUTE_SUPPLY = 0;
+async function pollMuteSupply() { if (!MUTE_MINT) return; try { MUTE_SUPPLY = hexToNum(await rpc('eth_call', [{ to: MUTE_MINT, data: '0x18160ddd' }, 'latest']), 18); } catch (e) {} }
+setInterval(pollMuteSupply, 60000); pollMuteSupply();
 async function pollMute() {
   if (!MUTE_MINT) return;
   try { const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/' + MUTE_MINT); if (!r.ok) return;
@@ -242,22 +255,9 @@ setInterval(pollMute, 20000); pollMute();
 // ---------- peg / algo tick ----------
 function tick() {
   const now = Date.now(); const dt = (now - db.lastTick) / 1000; if (dt < TICK_SEC) return; db.lastTick = now;
-  // mean-reverting mUSD price around $1
-  db.musdPrice += (1 - db.musdPrice) * 0.18 + (Math.random() - 0.5) * 0.0035;
-  db.musdPrice = Math.max(0.97, Math.min(1.03, db.musdPrice));
-  // algorithmic collateral ratio: above peg -> lower CR (more algo); below -> raise CR (more backing)
-  const target = db.musdPrice > 1.001 ? db.cr - 0.01 : db.musdPrice < 0.999 ? db.cr + 0.01 : db.cr;
-  db.cr += (Math.max(0.55, Math.min(1, target)) - db.cr) * 0.25;
-  // MUTE price drifts (captures protocol value)
-  if (!MUTE_LIVE.px) db.mutePrice = Math.max(0.05, db.mutePrice * (1 + (Math.random() - 0.49) * 0.02));
-  // simulated shielded activity (keeps the privacy pool alive)
-  const n = randomInt(0, 3);
-  for (let i = 0; i < n; i++) {
-    const roll = Math.random(); const recip = shKeys[randomInt(0, shKeys.length)];
-    if (roll < 0.3) { const amt = svc('shield', randomInt(200, 6000)); const { C, note } = shieldNote(amt, recip.pub); sh.totalValue += amt; pushShTx({ sig: base58(randomBytes(32)), type: 'shield', commitment: C, note, ts: now }); }
-    else if (roll < 0.85) { const { C, note } = shieldNote(svc('send', randomInt(50, 5000)), recip.pub); sh.nullifiers++; pushShTx({ sig: base58(randomBytes(32)), type: 'private', nullifier: nullifierOf(recip.secret, sh.notes + i), commitment: C, note, proof: simProof(), ts: now }); }
-    else { const amt = svc('unshield', randomInt(200, 4000)); sh.nullifiers++; sh.totalValue = Math.max(0, sh.totalValue - amt); pushShTx({ sig: base58(randomBytes(32)), type: 'unshield', nullifier: nullifierOf(recip.secret, sh.notes + i), publicAmount: amt, ts: now }); }
-  }
+  db.musdPrice = 1;                                   // redeemable 1:1 against the reserve
+  db.mutePrice = LIVE_PX() ? MUTE_LIVE.px : 0;        // real market price or nothing
+  db.cr = LIVE_PX() ? CR_TARGET : 1;                  // until $MUTE trades, every mUSD is 100% USDG
   shredBurn(now);
   save();
 }
@@ -268,12 +268,12 @@ function metrics() {
   const backing = db.collateralUsd / Math.max(1, db.musdSupply);
   return {
     stable: STABLE, gov: GOV, mint: MUTE_MINT, treasury: TREASURY, network: 'robinhood', chainId: 4663, explorer: 'https://explorer.mainnet.chain.robinhood.com', muteLive: MUTE_LIVE.px ? MUTE_LIVE : null, peg: 1.0,
-    musdPrice: +db.musdPrice.toFixed(4), pegStatus: db.musdPrice >= 1.001 ? 'above' : db.musdPrice <= 0.999 ? 'below' : 'at',
+    musdPrice: 1, pegStatus: 'at', muteTrading: LIVE_PX(), reserveOnchain: CHAIN.ok ? CHAIN.treasuryUsdg : null,
     musdSupply: db.musdSupply, musdMarketCap: db.musdPrice * db.musdSupply,
     cr: db.cr, collateralUsd: db.collateralUsd, backingRatio: backing,
-    mutePrice: db.mutePrice, muteSupply: db.muteSupply, muteMarketCap: db.mutePrice * db.muteSupply,
+    mutePrice: LIVE_PX() ? MUTE_LIVE.px : null, muteSupply: MUTE_SUPPLY || null, muteMarketCap: LIVE_PX() && MUTE_SUPPLY ? MUTE_LIVE.px * MUTE_SUPPLY : null, muteLiquidity: LIVE_PX() ? MUTE_LIVE.liq : null,
     minDeposit: MIN_DEPOSIT, chain: { ok: CHAIN.ok, block: CHAIN.block, treasuryUsdg: CHAIN.treasuryUsdg, treasuryMute: CHAIN.treasuryMute, lastRead: CHAIN.lastRead, usdg: USDG.addr, rpc: RPCS[0] },
-    deposits: { usdg: db.treasuryIn.usdg, n: db.treasuryIn.n }, dark: { markets: Object.keys(DARK_FEED).map((sym) => ({ sym, px: TAPE[sym] ? TAPE[sym].px : null, ts: TAPE[sym] ? TAPE[sym].ts : null, fresh: tapeFresh(sym) })), open: db.dark.open, opened: db.dark.opened, closed: db.dark.closed, volume: db.dark.volume, fees: db.dark.fees, liqs: db.dark.liqs, fee: DARK.fee, maxPos: DARK.maxPos, maxOi: DARK.maxOi, full: db.dark.oi >= DARK.maxOi }, bonds: (() => { const B = bondDay(); return { discount: BOND.discount, vestDays: BOND.vestMs / 864e5, capUsd: BOND.capUsd, leftToday: Math.max(0, BOND.capUsd - B.dayUsd), soldUsd: B.soldUsd, soldMute: B.soldMute, n: B.n, price: bondPrice(), market: db.mutePrice, end: BOND.end, open: Date.now() <= BOND.end, min: BOND.min, freezer: { discount: BOND.lockDiscount, lockDays: BOND.lockMs / 864e5, apy: BOND.lockApy, price: freezerPrice(), lockedMute: db.freezer.lockedMute, usd: db.freezer.usd, n: db.freezer.n, yieldMute: db.freezer.yieldMute } }; })(), punch: { cut: PUNCH_CUT, guests: db.punch.guests, paid: db.punch.paid, board: referrers() }, notes: { created: Object.keys(db.links).length, open: Object.values(db.links).filter((L) => !L.claimed).length, claimed: Object.values(db.links).filter((L) => L.claimed).length }, queue: { open: db.queue.filter((q) => q.status === 'queued').length, openUsd: db.queue.filter((q) => q.status === 'queued').reduce((a, q) => a + q.amt, 0), paid: db.queue.filter((q) => q.status === 'paid').length },
+    deposits: { usdg: db.treasuryIn.usdg, n: db.treasuryIn.n }, dark: { markets: Object.keys(DARK_FEED).map((sym) => ({ sym, px: TAPE[sym] ? TAPE[sym].px : null, ts: TAPE[sym] ? TAPE[sym].ts : null, fresh: tapeFresh(sym) })), open: db.dark.open, opened: db.dark.opened, closed: db.dark.closed, volume: db.dark.volume, fees: db.dark.fees, liqs: db.dark.liqs, fee: DARK.fee, maxPos: DARK.maxPos, maxOi: DARK.maxOi, full: db.dark.oi >= DARK.maxOi }, bonds: (() => { const B = bondDay(); return { discount: BOND.discount, vestDays: BOND.vestMs / 864e5, capUsd: BOND.capUsd, leftToday: Math.max(0, BOND.capUsd - B.dayUsd), soldUsd: B.soldUsd, soldMute: B.soldMute, n: B.n, price: LIVE_PX() ? bondPrice() : null, market: LIVE_PX() ? db.mutePrice : null, end: BOND.end, open: Date.now() <= BOND.end && LIVE_PX(), waitingForMute: !LIVE_PX(), min: BOND.min, freezer: { discount: BOND.lockDiscount, lockDays: BOND.lockMs / 864e5, apy: BOND.lockApy, price: LIVE_PX() ? freezerPrice() : null, lockedMute: db.freezer.lockedMute, usd: db.freezer.usd, n: db.freezer.n, yieldMute: db.freezer.yieldMute } }; })(), punch: { cut: PUNCH_CUT, guests: db.punch.guests, paid: db.punch.paid, board: referrers() }, notes: { created: Object.keys(db.links).length, open: Object.values(db.links).filter((L) => !L.claimed).length, claimed: Object.values(db.links).filter((L) => L.claimed).length }, queue: { open: db.queue.filter((q) => q.status === 'queued').length, openUsd: db.queue.filter((q) => q.status === 'queued').reduce((a, q) => a + q.amt, 0), paid: db.queue.filter((q) => q.status === 'paid').length },
     happy: { ...HAPPY, apy: happyApy(Date.now()), baseApy: HAPPY.apy, boost: { apy: HAPPY_BOOST.apy, end: HAPPY_BOOST.end, live: Date.now() < HAPPY_BOOST.end, endsIn: Math.max(0, HAPPY_BOOST.end - Date.now()) }, live: happyLive(Date.now()), staked: db.happy.staked, stakers: db.happy.stakers, paidMute: db.happy.paidMute, paidUsd: db.happy.paidUsd, poolLeft: Math.max(0, HAPPY.pool - db.happy.paidMute), poolLeftUsd: Math.max(0, HAPPY.pool - db.happy.paidMute) * db.mutePrice, endsIn: Math.max(0, HAPPY.end - Date.now()), startsIn: Math.max(0, HAPPY.start - Date.now()) },
     shred: { svcUsd: shred.svcUsd, burnedMute: shred.burnedMute, burnedUsd: shred.burnedUsd, epochs: shred.epochs, minUsd: SHRED_MIN_USD, bps: { shield: 30, send: 30, unshield: 30, redeem: 50 }, burns: shred.burns.slice(0, 8).map((b) => ({ id: b.id.slice(0, 8) + '…' + b.id.slice(-4), usd: b.usd, mute: b.mute, px: b.px, ts: b.ts, epoch: b.epoch })) },
     quiet: quietView(),
@@ -305,7 +305,7 @@ http.createServer(async (req, res) => {
 
     if (u === '/api/mint') { // collateral + MUTE -> mUSD
       const m = num(d.amount); if (!m) return json(res, 200, { error: 'enter an amount' });
-      const needUsdg = m * db.cr; const algoUsd = m * (1 - db.cr); const burnMute = algoUsd / db.mutePrice;
+      const needUsdg = m * db.cr; const algoUsd = m * (1 - db.cr); const burnMute = LIVE_PX() ? algoUsd / db.mutePrice : 0;
       if (w.usdg < m) return json(res, 200, { error: 'not enough USDG — deposit first' });
       // the algorithmic slice is paid in USDG too: it buys MUTE at market and burns it via the shred (nothing is printed to mint mUSD)
       w.usdg -= m; w.musd += m; db.musdSupply += m; db.collateralUsd += needUsdg; db.muteSupply = Math.max(0, db.muteSupply - burnMute);
@@ -315,7 +315,7 @@ http.createServer(async (req, res) => {
     if (u === '/api/dev/faucet' && process.env.DEV_FAUCET === '1') { w.usdg += num(d.amount) || 0; save(); return json(res, 200, { ok: true, ...account(d.wallet) }); }   // LOCAL TESTING ONLY — never set DEV_FAUCET in production
     if (u === '/api/deposit') { try { const r = await creditDeposit(d.wallet.toLowerCase(), d.tx); return json(res, 200, { ok: true, ...r, ...account(d.wallet) }); } catch (e) { return json(res, 200, { error: String(e.message || e) }); } }
     if (u === '/api/bond') { // USDG ledger -> discounted MUTE, vested. USDG stays in reserve. Nothing minted.
-      const now = Date.now(); if (now > BOND.end) return json(res, 200, { error: 'bonds are closed' });
+      const now = Date.now(); if (now > BOND.end) return json(res, 200, { error: 'bonds are closed' }); if (!LIVE_PX()) return json(res, 200, { error: 'bonds open once $MUTE trades' });
       const x = num(d.amount, w.usdg); if (!x) return json(res, 200, { error: 'not enough USDG — deposit first' }); if (x < BOND.min) return json(res, 200, { error: 'minimum bond is ' + BOND.min + ' USDG' });
       const B = bondDay(); if (B.dayUsd + x > BOND.capUsd) return json(res, 200, { error: 'today\'s bond capacity is spent — ' + (BOND.capUsd - B.dayUsd).toFixed(2) + ' USDG left' });
       const lock = !!d.lock; const price = lock ? freezerPrice() : bondPrice(); const mute = x / price;
@@ -345,13 +345,14 @@ http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, unstaked: xn, fee: x - xn, ...account(d.wallet) });
     }
     if (u === '/api/claim') { const now = Date.now(); accrue(w, now); const usd = w.stakeAcc || 0; if (usd < 0.01) return json(res, 200, { error: 'nothing to claim yet' });
+      if (!LIVE_PX()) return json(res, 200, { error: 'rewards are paid in $MUTE once it trades. They keep accruing until then' });
       const px = Math.max(0.000001, db.mutePrice); let mute = usd / px; const left = HAPPY.pool - db.happy.paidMute; if (left <= 0) return json(res, 200, { error: 'the pool is spent — happy hour is over' }); if (mute > left) mute = left;
       w.stakeAcc = 0; w.mute += mute; db.happy.paidMute += mute; db.happy.paidUsd += mute * px; save();
       return json(res, 200, { ok: true, claimedMute: mute, claimedUsd: mute * px, ...account(d.wallet) });
     }
     if (u === '/api/redeem') { // mUSD -> collateral + MUTE
       const r = num(d.amount, w.musd); if (!r) return json(res, 200, { error: 'nothing to redeem' });
-      const rn = svc('redeem', r, w); const outUsdg = rn * db.cr; const mintMute = (rn * (1 - db.cr)) / db.mutePrice;
+      const rn = svc('redeem', r, w); const outUsdg = rn * db.cr; const mintMute = LIVE_PX() ? (rn * (1 - db.cr)) / db.mutePrice : 0;
       w.musd -= r; w.usdg += outUsdg; w.mute += mintMute; db.musdSupply = Math.max(0, db.musdSupply - r); db.collateralUsd = Math.max(0, db.collateralUsd - outUsdg); db.muteSupply += mintMute; save();
       return json(res, 200, { ok: true, redeemed: r, gotUsdg: outUsdg, gotMute: mintMute, ...account(d.wallet) });
     }
